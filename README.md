@@ -38,7 +38,7 @@
 1.  **Clone the Repository**
     ```bash
     git clone https://github.com/roomkangali/dashboard-report-dlh.git
-    cd dlh-dashboard
+    cd dashboard-report-dlh
     ```
 
 2.  **Install Dependencies**
