@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Droid-LLM-Hunter Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 
+                            950: '#000000',
+                            900: '#020617', 
+                            800: '#0f172a', 
+                            700: '#1e293b', 
+                            600: '#334155',
+                            500: '#475569' 
+                        },
+                        brand: {
+                            primary: '#0ea5e9',
+                            secondary: '#06b6d4',
+                            accent: '#14b8a6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800 text-slate-300 min-h-screen flex items-center justify-center font-sans">
+
+    <div class="max-w-md w-full bg-dark-800/80 backdrop-blur-xl border border-brand-primary/20 rounded-2xl p-8 shadow-2xl">
+        <div class="flex items-center justify-center gap-3 mb-8">
+            <div class="relative">
+                <div class="absolute inset-0 bg-green-500/20 blur-xl rounded-full"></div>
+                <div class="relative text-green-500">
+                    <svg viewBox="0 0 24 24" fill="currentColor" class="w-10 h-10">
+                        <path d="M17.523 15.3414C17.523 16.637 16.4716 17.6885 15.176 17.6885C13.8804 17.6885 12.829 16.637 12.829 15.3414C12.829 14.0458 11.7775 12.9944 10.4819 12.9944C9.18635 12.9944 8.13491 14.0458 8.13491 15.3414C8.13491 16.637 7.08346 17.6885 5.7879 17.6885C4.49233 17.6885 3.44089 16.637 3.44089 15.3414C3.44089 12.9247 5.09707 10.8841 7.33044 10.2241L6.22081 8.30327C6.07597 8.05268 6.16278 7.73322 6.41337 7.58838C6.66396 7.44354 6.98342 7.53035 7.12826 7.78094L8.34994 9.89667C10.0528 9.12284 12.016 9.12284 13.7189 9.89667L14.9406 7.78094C15.0854 7.53035 15.4049 7.44354 15.6555 7.58838C15.9061 7.73322 15.9929 8.05268 15.848 8.30327L14.7384 10.2241C16.9718 10.8841 18.628 12.9247 18.628 15.3414H17.523ZM14.5889 13.5806C14.9129 13.5806 15.176 13.3175 15.176 12.9935C15.176 12.6695 14.9129 12.4064 14.5889 12.4064C14.2649 12.4064 14.0018 12.6695 14.0018 12.9935C14.0018 13.3175 14.2649 13.5806 14.5889 13.5806ZM7.47998 13.5806C7.80397 13.5806 8.06706 13.3175 8.06706 12.9935C8.06706 12.6695 7.80397 12.4064 7.47998 12.4064C7.15599 12.4064 6.8929 12.6695 6.8929 12.9935C6.8929 13.3175 7.15599 13.5806 7.47998 13.5806Z"/>
+                    </svg>
+                </div>
+            </div>
+            <h1 class="font-bold text-2xl text-white tracking-wide">Droid-LLM-Hunter</h1>
+        </div>
+        <h2 class="text-xl font-medium text-slate-400 text-center mb-6">Register</h2>
+        <form id="register-form">
+            <div class="mb-4">
+                <label for="username" class="block text-sm font-medium text-slate-400 mb-2">Username</label>
+                <input type="text" id="username" name="username" class="w-full bg-dark-900 border border-dark-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary" required>
+            </div>
+            <div class="mb-6">
+                <label for="password" class="block text-sm font-medium text-slate-400 mb-2">Password</label>
+                <input type="password" id="password" name="password" class="w-full bg-dark-900 border border-dark-700 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand-primary" required>
+            </div>
+            <button type="submit" class="w-full bg-gradient-to-r from-brand-primary to-brand-secondary text-white font-bold py-2 px-4 rounded-lg hover:opacity-90 transition-opacity">Register</button>
+        </form>
+        <p class="text-center text-sm text-slate-400 mt-4">
+            Already have an account? <a href="login.html" class="font-medium text-brand-primary hover:underline">Login here</a>
+        </p>
+        <div id="error-message" class="hidden mt-4 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm"></div>
+        <div id="success-message" class="hidden mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-sm"></div>
+    </div>
+
+    <script>
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = e.target.username.value;
+            const password = e.target.password.value;
+            const errorMessage = document.getElementById('error-message');
+            const successMessage = document.getElementById('success-message');
+
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    successMessage.textContent = data.message;
+                    successMessage.classList.remove('hidden');
+                    setTimeout(() => {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                } else {
+                    errorMessage.textContent = data.message;
+                    errorMessage.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorMessage.textContent = 'An error occurred. Please try again.';
+                errorMessage.classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html>

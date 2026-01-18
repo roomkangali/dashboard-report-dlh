@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Droid-LLM-Hunter Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <link rel="stylesheet" href="styles.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: { 
+                            950: '#000000',
+                            900: '#020617', 
+                            800: '#0f172a', 
+                            700: '#1e293b', 
+                            600: '#334155',
+                            500: '#475569' 
+                        },
+                        brand: {
+                            primary: '#0ea5e9',
+                            secondary: '#06b6d4',
+                            accent: '#14b8a6'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-dark-950 via-dark-900 to-dark-800 text-slate-300 min-h-screen bg-animate">
+
+    <!-- Top Navigation -->
+    <nav class="bg-dark-800/80 backdrop-blur-xl border-b border-brand-primary/20 sticky top-0 z-50 shadow-xl">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <div class="absolute inset-0 bg-green-500/20 blur-xl rounded-full"></div>
+                        <div class="relative text-green-500">
+                            <svg viewBox="0 0 24 24" fill="currentColor" class="w-9 h-9">
+                                <path d="M17.523 15.3414C17.523 16.637 16.4716 17.6885 15.176 17.6885C13.8804 17.6885 12.829 16.637 12.829 15.3414C12.829 14.0458 11.7775 12.9944 10.4819 12.9944C9.18635 12.9944 8.13491 14.0458 8.13491 15.3414C8.13491 16.637 7.08346 17.6885 5.7879 17.6885C4.49233 17.6885 3.44089 16.637 3.44089 15.3414C3.44089 12.9247 5.09707 10.8841 7.33044 10.2241L6.22081 8.30327C6.07597 8.05268 6.16278 7.73322 6.41337 7.58838C6.66396 7.44354 6.98342 7.53035 7.12826 7.78094L8.34994 9.89667C10.0528 9.12284 12.016 9.12284 13.7189 9.89667L14.9406 7.78094C15.0854 7.53035 15.4049 7.44354 15.6555 7.58838C15.9061 7.73322 15.9929 8.05268 15.848 8.30327L14.7384 10.2241C16.9718 10.8841 18.628 12.9247 18.628 15.3414H17.523ZM14.5889 13.5806C14.9129 13.5806 15.176 13.3175 15.176 12.9935C15.176 12.6695 14.9129 12.4064 14.5889 12.4064C14.2649 12.4064 14.0018 12.6695 14.0018 12.9935C14.0018 13.3175 14.2649 13.5806 14.5889 13.5806ZM7.47998 13.5806C7.80397 13.5806 8.06706 13.3175 8.06706 12.9935C8.06706 12.6695 7.80397 12.4064 7.47998 12.4064C7.15599 12.4064 6.8929 12.6695 6.8929 12.9935C6.8929 13.3175 7.15599 13.5806 7.47998 13.5806Z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="index.html" class="font-bold text-xl text-white tracking-wide hover:text-brand-primary transition-colors">Dashboard Report | Droid-LLM-Hunter</a>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button id="btn-reset" onclick="resetViewer()" class="hidden text-xs font-medium text-red-400 hover:text-red-300 border border-red-900/50 bg-red-500/10 hover:bg-red-500/20 px-4 py-2 rounded-lg transition-all hover-glow">
+                        Close Report
+                    </button>
+<button id="btn-history" onclick="toggleHistory()" class="text-xs font-medium text-slate-300 hover:text-white border border-brand-primary/30 bg-brand-primary/10 hover:bg-brand-primary/20 px-4 py-2 rounded-lg transition-all hover-glow">
+    <span class="flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        History
+    </span>
+</button>
+<button onclick="toggleHelpModal()" class="text-slate-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-dark-700/50" title="Help & Documentation">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+</button>
+<div class="relative ml-2">
+    <button onclick="toggleProfileMenu()" id="user-menu-button" class="flex items-center gap-2 focus:outline-none p-1 rounded-full hover:bg-dark-700/50 transition-colors border border-transparent hover:border-brand-primary/30">
+        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-brand-primary to-brand-accent flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-brand-primary/20">
+            <span id="user-avatar-initial">U</span>
+        </div>
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+    </button>
+    
+    <div id="user-menu-dropdown" class="hidden absolute right-0 mt-2 w-48 rounded-xl bg-dark-800 border border-dark-600 shadow-2xl py-1 z-50 transform origin-top-right transition-all duration-200 glass-panel">
+        <div class="px-4 py-3 border-b border-dark-600">
+            <p class="text-xs text-slate-400">Signed in as</p>
+            <p class="text-sm font-medium text-white truncate" id="user-menu-username">User</p>
+        </div>
+        <a href="#" onclick="showProfileView(); return false;" class="block px-4 py-2 text-sm text-slate-300 hover:bg-dark-700 hover:text-white transition-colors">Your Profile</a>
+        <a href="#" onclick="showSettingsView(); return false;" class="block px-4 py-2 text-sm text-slate-300 hover:bg-dark-700 hover:text-white transition-colors">Settings</a>
+        <div class="border-t border-dark-600 my-1"></div>
+        <button onclick="logout()" class="w-full text-left block px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors">Sign out</button>
+    </div>
+</div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Upload Section -->
+    <div id="upload-section" class="min-h-[calc(100vh-64px)] flex items-center justify-center p-4">
+        <div class="max-w-4xl w-full">
+            
+            <!-- Hero -->
+            <div class="text-center mb-8 fade-in">
+                <h2 class="text-4xl md:text-5xl font-bold text-white mb-3 bg-gradient-to-r from-brand-primary via-brand-secondary to-brand-accent bg-clip-text text-transparent text-gradient-animate">
+                    Android Security Analysis
+                </h2>
+                <p class="text-slate-400 text-lg">Upload your Droid-LLM-Hunter JSON report to visualize vulnerabilities</p>
+            </div>
+
+            <!-- Upload Box -->
+            <label for="file-upload" class="block mb-6 cursor-pointer group">
+                <div class="scanner-container relative overflow-hidden border-2 border-dashed border-brand-primary/30 rounded-2xl bg-dark-800/50 backdrop-blur-sm hover:border-brand-primary/60 hover:bg-dark-800/80 transition-all duration-300 hover-glow">
+                    <div class="scanner-line"></div>
+                    <div class="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-brand-accent/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="relative flex flex-col items-center justify-center py-16 px-6">
+                        <div class="mb-6 relative">
+                            <div class="absolute inset-0 bg-brand-primary/20 blur-2xl rounded-full"></div>
+                            <svg class="relative w-16 h-16 text-brand-primary group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-white mb-2">Drop your JSON file here</h3>
+                        <p class="text-sm text-slate-400 mb-4">or click to browse</p>
+                        <div class="flex items-center gap-2 text-xs text-slate-500">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span>Supports .json files from Droid-LLM-Hunter</span>
+                        </div>
+                    </div>
+                </div>
+                <input id="file-upload" type="file" class="hidden" accept=".json" onchange="handleFileUpload(this)" />
+            </label>
+
+            <!-- Advanced Features Toggle (NEW) -->
+            <div id="advanced-toggle-container" class="text-center mb-6">
+                <div class="p-4 bg-dark-800/60 border border-brand-primary/20 rounded-xl">
+<h4 class="text-brand-primary font-semibold text-base mb-1 flex items-center gap-2">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+    Your report data is now stored in the database and linked to your login account.
+</h4>
+<p class="text-slate-400 text-sm">All upload history, deletion, and report access are now centralized and securely managed on the server.</p>
+                </div>
+            </div>
+
+            <!-- Info Box -->
+            <div class="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <div>
+<h4 class="text-blue-400 font-semibold text-sm mb-1">ℹ️ Dashboard Features</h4>
+<ul class="text-blue-300/80 text-xs space-y-1">
+    <li>• Upload your Droid-LLM-Hunter JSON file to analyze your Android app's security</li>
+    <li>• All reports and history are stored in the database, linked to your login account</li>
+    <li>• View, delete, and manage reports centrally through this dashboard</li>
+</ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="error-message" class="hidden mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <div class="flex items-start gap-3">
+                    <svg class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <div>
+                        <h4 class="text-red-400 font-semibold text-sm mb-1">Upload Error</h4>
+                        <p class="text-red-300/80 text-sm" id="error-text"></p>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+
+    <!-- Dashboard Home View -->
+    <div id="dashboard-home-view" class="hidden min-h-[calc(100vh-64px)] p-8">
+        <div class="max-w-7xl mx-auto space-y-8">
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-3xl font-bold text-white mb-2">Reports Overview</h2>
+                    <p class="text-slate-400">Welcome back, <span id="home-username">User</span></p>
+                </div>
+                <button onclick="resetViewer()" class="bg-brand-primary hover:bg-brand-secondary text-white font-bold py-2 px-6 rounded-lg transition-all shadow-lg shadow-brand-primary/20 flex items-center gap-2 hover-glow">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    New Report
+                </button>
+            </div>
+
+            <!-- Global Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="stat-card bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-6">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-blue-500/20 rounded-lg text-blue-400">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Total Reports</p>
+                            <h3 class="text-3xl font-bold text-white" id="stat-total-projects">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-6">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-red-500/20 rounded-lg text-red-400">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Total Vulnerabilities</p>
+                            <h3 class="text-3xl font-bold text-white" id="stat-total-vulns">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-6">
+                    <div class="flex items-center gap-4">
+                        <div class="p-3 bg-green-500/20 rounded-lg text-green-400">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Critical Issues</p>
+                            <h3 class="text-3xl font-bold text-white" id="stat-critical-vulns">0</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Reports Table -->
+            <div class="bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl overflow-hidden">
+                <div class="p-6 border-b border-dark-600/50">
+                    <h3 class="text-xl font-bold text-white">Recent Reports</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-dark-900/50 text-slate-400 text-xs uppercase">
+                            <tr>
+                                <th class="px-6 py-4 font-semibold">Reports</th>
+                                <th class="px-6 py-4 font-semibold">Date Scanned</th>
+                                <th class="px-6 py-4 font-semibold">Vulnerabilities</th>
+                                <th class="px-6 py-4 font-semibold text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projects-table-body" class="divide-y divide-dark-700/50 text-sm">
+                            <!-- Rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Dashboard -->
+    <div id="report-dashboard" class="hidden min-h-[calc(100vh-64px)]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Stats Overview -->
+            <div id="stats-section" class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 fade-in"></div>
+
+            <!-- Main Content -->
+            <div class="flex flex-col lg:flex-row gap-6">
+                
+                <!-- Sidebar Navigation -->
+                <aside class="w-full lg:w-64 flex-shrink-0">
+                    <div class="bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-4 sticky top-24">
+                        <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-2">Navigation</h3>
+                        <nav class="space-y-1">
+                            <button onclick="switchTab('overview')" id="btn-overview" class="nav-btn active">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                <span>Overview</span>
+                            </button>
+                            <button onclick="switchTab('summary')" id="btn-summary" class="nav-btn">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                <span>App Summary</span>
+                            </button>
+                            <button onclick="switchTab('attack-surface')" id="btn-attack-surface" class="nav-btn">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span>Attack Surface</span>
+                            </button>
+                            <button onclick="switchTab('findings')" id="btn-findings" class="nav-btn">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                                <span>Findings</span>
+                                <span id="findings-count" class="ml-auto bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+                            </button>
+                        </nav>
+                    </div>
+                </aside>
+
+                <!-- Main Content Area -->
+                <main class="flex-grow min-w-0">
+                    
+                    <!-- Overview Tab -->
+                    <div id="tab-overview" class="space-y-6">
+                        <div class="bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-6">
+                            <h2 class="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-primary to-brand-accent flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                </div>
+                                Security Analysis Overview
+                            </h2>
+                            <div class="grid md:grid-cols-2 gap-6">
+                                <div>
+                                    <canvas id="severity-chart"></canvas>
+                                </div>
+                                <div>
+                                    <canvas id="status-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Findings Widget -->
+                        <div class="bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-6">
+                            <h3 class="text-lg font-semibold text-white mb-4">Critical Findings</h3>
+                            <div id="critical-findings-list" class="space-y-3"></div>
+                        </div>
+                    </div>
+
+                    <!-- Summary Tab -->
+                    <div id="tab-summary" class="hidden">
+                        <div class="bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-6 md:p-8">
+                            <div class="flex items-center gap-3 mb-6 pb-4 border-b border-dark-600/50">
+                                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                </div>
+                                <h2 class="text-2xl font-bold text-white">Application Summary</h2>
+                            </div>
+                            <div id="content-summary" class="markdown-body prose prose-invert max-w-none"></div>
+                        </div>
+                    </div>
+
+                    <!-- Attack Surface Tab -->
+                    <div id="tab-attack-surface" class="hidden">
+                        <div class="bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-6 md:p-8">
+                            <div class="flex items-center gap-3 mb-6 pb-4 border-b border-dark-600/50">
+                                <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                </div>
+                                <h2 class="text-2xl font-bold text-white">Attack Surface Map</h2>
+                            </div>
+                            <div id="content-attack-surface" class="markdown-body prose prose-invert max-w-none"></div>
+                        </div>
+                    </div>
+
+                    <!-- Findings Tab -->
+                    <div id="tab-findings" class="hidden space-y-4">
+                        <!-- Filters -->
+                        <div class="bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-4">
+                            <div class="flex flex-wrap gap-3 items-center">
+                                <span class="text-sm font-medium text-slate-400">Filter:</span>
+                                <button onclick="filterFindings('all')" class="filter-btn active" data-filter="all">All</button>
+                                <button onclick="filterFindings('critical')" class="filter-btn" data-filter="critical">Critical</button>
+                                <button onclick="filterFindings('high')" class="filter-btn" data-filter="high">High</button>
+                                <button onclick="filterFindings('medium')" class="filter-btn" data-filter="medium">Medium</button>
+                                <button onclick="filterFindings('low')" class="filter-btn" data-filter="low">Low</button>
+                                <button onclick="filterFindings('vulnerable')" class="filter-btn" data-filter="vulnerable">Vulnerable</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Findings List -->
+                        <div id="findings-list" class="space-y-4"></div>
+                    </div>
+
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile View -->
+    <div id="profile-view" class="hidden min-h-[calc(100vh-64px)] p-8">
+        <div class="max-w-4xl mx-auto space-y-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-2xl font-bold text-white">User Profile</h2>
+                <button onclick="showDashboard()" class="text-sm text-slate-400 hover:text-white flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Back to Dashboard
+                </button>
+            </div>
+            
+            <!-- Profile Card -->
+            <div class="bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-6">
+                <div class="flex items-center gap-6 mb-8">
+                    <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-brand-primary to-brand-accent flex items-center justify-center text-white font-bold text-3xl shadow-xl">
+                        <span id="profile-avatar-initial">U</span>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-white mb-1" id="profile-username">User</h3>
+                        <p class="text-slate-400 text-sm">Administrator</p>
+                    </div>
+                </div>
+                
+                <div class="border-t border-dark-600/50 pt-6">
+                    <h4 class="text-lg font-semibold text-white mb-4">Security</h4>
+                    <form id="change-password-form" class="max-w-md space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">Current Password</label>
+                            <input type="password" class="w-full bg-dark-900 border border-dark-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-primary transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">New Password</label>
+                            <input type="password" class="w-full bg-dark-900 border border-dark-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-primary transition-colors">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-400 mb-1">Confirm New Password</label>
+                            <input type="password" class="w-full bg-dark-900 border border-dark-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-brand-primary transition-colors">
+                        </div>
+                        <button type="submit" class="bg-brand-primary hover:bg-brand-primary/90 text-white font-medium px-4 py-2 rounded-lg transition-colors">
+                            Update Password
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings View -->
+    <div id="settings-view" class="hidden min-h-[calc(100vh-64px)] p-8">
+        <div class="max-w-4xl mx-auto space-y-6">
+            <div class="flex items-center justify-between">
+                <h2 class="text-2xl font-bold text-white">Application Settings</h2>
+                <button onclick="showDashboard()" class="text-sm text-slate-400 hover:text-white flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Back to Dashboard
+                </button>
+            </div>
+            
+            <div class="grid gap-6">
+                <!-- Appearance -->
+                <div class="bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        Appearance
+                    </h3>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-white font-medium">Dark Mode</p>
+                            <p class="text-sm text-slate-400">Use dark theme for the dashboard</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" checked class="sr-only peer" disabled>
+                            <div class="w-11 h-6 bg-dark-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-primary opacity-50 cursor-not-allowed"></div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Data Management -->
+                <div class="bg-dark-800/50 backdrop-blur-sm border border-dark-600/50 rounded-xl p-6">
+                    <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        Data Management
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-white font-medium">Clear All History</p>
+                                <p class="text-sm text-slate-400">Remove all locally cached report data</p>
+                            </div>
+                            <button onclick="localStorage.removeItem('token'); window.location.reload();" class="px-4 py-2 border border-red-500/30 text-red-400 hover:bg-red-500/10 rounded-lg text-sm transition-colors">
+                                Clear Data & Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Sidebar -->
+    <div id="history-sidebar" class="hidden">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" onclick="toggleHistory()"></div>
+        <div class="fixed right-0 top-0 h-full w-full max-w-md bg-dark-800 border-l border-dark-600 shadow-2xl z-50 transform transition-transform duration-300">
+            <div class="flex flex-col h-full">
+                <div class="flex items-center justify-between p-6 border-b border-dark-600">
+                    <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                        <svg class="w-6 h-6 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Upload History
+                    </h2>
+                    <button onclick="toggleHistory()" class="text-slate-400 hover:text-white transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="flex-grow overflow-y-auto p-6 custom-scrollbar">
+                    <div id="history-sidebar-list" class="space-y-3"></div>
+                    <div id="history-empty" class="hidden text-center py-12">
+                        <svg class="w-16 h-16 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <p class="text-slate-500">No upload history yet</p>
+                    </div>
+                </div>
+                <div class="p-6 border-t border-dark-600">
+                    <button onclick="clearAllHistory()" class="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2 rounded-lg transition font-medium text-sm">
+                        Clear All History
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- File List Modal -->
+    <div id="file-list-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/70 backdrop-blur-sm" onclick="closeFileListModal()"></div>
+        <div class="relative bg-dark-800 border border-dark-600 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b border-dark-600">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"></path></svg>
+                    Select File from Histories
+                </h2>
+                <button onclick="closeFileListModal()" class="text-slate-400 hover:text-white transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <!-- Modal Content -->
+            <div class="flex-grow overflow-y-auto p-6 custom-scrollbar">
+                <div id="file-list-content" class="space-y-2">
+                    <!-- File list will be populated by showFileListModal() -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/70 backdrop-blur-sm" onclick="toggleHelpModal()"></div>
+        <div class="relative bg-dark-800 border border-dark-600 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-6 border-b border-dark-600">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Documentation
+                </h2>
+                <button onclick="toggleHelpModal()" class="text-slate-400 hover:text-white transition">Close</button>
+            </div>
+            <!-- Content -->
+            <div class="flex-grow overflow-y-auto p-6 custom-scrollbar space-y-8">
+                <!-- Section 1: How to Use -->
+                <section>
+                    <h3 class="text-lg font-semibold text-brand-primary mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        How to Use
+                    </h3>
+                    <div class="bg-dark-900/50 rounded-xl p-4 border border-dark-600/50">
+                        <ol class="list-decimal list-inside text-slate-300 space-y-2">
+                            <li>Login to the dashboard using your credentials.</li>
+                            <li>On the <strong>Reports Overview</strong> page, click the <strong>"New Scan"</strong> button.</li>
+                            <li>Upload your <code>.json</code> report file generated by Droid-LLM-Hunter.</li>
+                            <li>Wait for the analysis to process and view the results in the interactive dashboard.</li>
+                        </ol>
+                    </div>
+                </section>
+
+                <!-- Section 2: FAQ -->
+                <section>
+                    <h3 class="text-lg font-semibold text-brand-primary mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Frequently Asked Questions
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="bg-dark-900/50 rounded-xl p-4 border border-dark-600/50">
+                            <h4 class="font-medium text-white mb-1">Why is my upload failing?</h4>
+                            <p class="text-sm text-slate-400">Ensure your file is a valid JSON file generated by the tool. Check if the file contains <code>app_summary</code> and <code>results</code> fields.</p>
+                        </div>
+                        <div class="bg-dark-900/50 rounded-xl p-4 border border-dark-600/50">
+                            <h4 class="font-medium text-white mb-1">How do I delete a report?</h4>
+                            <p class="text-sm text-slate-400">Go to the <strong>Reports Overview</strong> (Home) page and click the "Delete" button next to the report you wish to remove.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 3: About -->
+                <section>
+                    <h3 class="text-lg font-semibold text-brand-primary mb-3 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        About Droid-LLM-Hunter
+                    </h3>
+                    <div class="bg-gradient-to-br from-brand-primary/10 to-brand-accent/10 rounded-xl p-6 border border-brand-primary/20 text-center">
+                        <div class="w-16 h-16 bg-dark-800 rounded-full mx-auto mb-4 flex items-center justify-center text-green-500 shadow-lg">
+                            <svg viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8">
+                                <path d="M17.523 15.3414C17.523 16.637 16.4716 17.6885 15.176 17.6885C13.8804 17.6885 12.829 16.637 12.829 15.3414C12.829 14.0458 11.7775 12.9944 10.4819 12.9944C9.18635 12.9944 8.13491 14.0458 8.13491 15.3414C8.13491 16.637 7.08346 17.6885 5.7879 17.6885C4.49233 17.6885 3.44089 16.637 3.44089 15.3414C3.44089 12.9247 5.09707 10.8841 7.33044 10.2241L6.22081 8.30327C6.07597 8.05268 6.16278 7.73322 6.41337 7.58838C6.66396 7.44354 6.98342 7.53035 7.12826 7.78094L8.34994 9.89667C10.0528 9.12284 12.016 9.12284 13.7189 9.89667L14.9406 7.78094C15.0854 7.53035 15.4049 7.44354 15.6555 7.58838C15.9061 7.73322 15.9929 8.05268 15.848 8.30327L14.7384 10.2241C16.9718 10.8841 18.628 12.9247 18.628 15.3414H17.523ZM14.5889 13.5806C14.9129 13.5806 15.176 13.3175 15.176 12.9935C15.176 12.6695 14.9129 12.4064 14.5889 12.4064C14.2649 12.4064 14.0018 12.6695 14.0018 12.9935C14.0018 13.3175 14.2649 13.5806 14.5889 13.5806ZM7.47998 13.5806C7.80397 13.5806 8.06706 13.3175 8.06706 12.9935C8.06706 12.6695 7.80397 12.4064 7.47998 12.4064C7.15599 12.4064 6.8929 12.6695 6.8929 12.9935C6.8929 13.3175 7.15599 13.5806 7.47998 13.5806Z"/>
+                            </svg>
+                        </div>
+                        <h4 class="text-xl font-bold text-white mb-2">Dashboard Report | Droid-LLM-Hunter</h4>
+                        <p class="text-sm text-slate-400 mb-4">
+                            Dashboard Report is a specialized web interface designed to visualize and manage security analysis reports generated by the Droid-LLM-Hunter tool.
+                        </p>
+                        <p class="text-xs text-slate-500">Version 1.0.0 &bull; 2026</p>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark-900/50 backdrop-blur-sm border-t border-dark-700/50 py-6 mt-12">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-sm text-slate-500">
+                Powered by <a href="index.html" class="text-brand-primary font-semibold hover:text-brand-secondary transition-colors">Droid-LLM-Hunter</a>
+            </p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="app.js"></script>
+</body>
+</html>

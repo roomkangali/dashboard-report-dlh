@@ -1,0 +1,5 @@
+nohup: ignoring input
+Server running at http://0.0.0.0:3000
+Connected to SQLite database.
+Users table created successfully or already exists.
+Reports table created successfully or already exists.
