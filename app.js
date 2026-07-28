@@ -3,6 +3,10 @@ let currentReportData = null;
 let currentFilter = 'all';
 let severityChart = null;
 let statusChart = null;
+let historyCache = [];
+let reportSearchTerm = '';
+let reportsCurrentPage = 1;
+const REPORTS_PER_PAGE = 10;
 
 // ========== Authentication ==========
 // Check token when page loads
@@ -102,12 +106,29 @@ async function handleFileUpload(input) {
             });
 
             if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.message || 'Failed to upload report.');
+                const responseText = await response.text();
+                let errMessage = 'Failed to upload report.';
+
+                try {
+                    const errData = JSON.parse(responseText);
+                    errMessage = errData.message || errData.error || errMessage;
+                } catch (parseError) {
+                    if (response.status === 401) {
+                        errMessage = 'Session expired or unauthorized. Please login again.';
+                    } else if (responseText && responseText.trim()) {
+                        errMessage = responseText.trim();
+                    }
+                }
+
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                }
+
+                throw new Error(errMessage);
             }
 
-            currentReportData = jsonContent;
-            renderReport(jsonContent);
+            currentReportData = normalizeReportData(jsonContent);
+            renderReport(currentReportData);
             showDashboard();
             updateHistoryUI();
 
@@ -148,7 +169,8 @@ async function updateHistoryUI() {
         }
 
         const reports = await response.json();
-        updateHistorySidebar(reports.data);
+        historyCache = reports.data || [];
+        updateHistorySidebar(historyCache);
 
     } catch (error) {
         console.error('Error fetching history:', error);
@@ -211,10 +233,12 @@ async function loadHistoryEntry(id) {
         }
 
         const report = await response.json();
-        currentReportData = JSON.parse(report.data.data);
+        currentReportData = normalizeReportData(JSON.parse(report.data.data));
         renderReport(currentReportData);
         showDashboard();
-        if(document.getElementById('history-sidebar')) {
+
+        const historySidebar = document.getElementById('history-sidebar');
+        if (historySidebar && !historySidebar.classList.contains('hidden')) {
             toggleHistory();
         }
         
@@ -305,9 +329,11 @@ async function updateHomeData() {
         if (response.ok) {
             const result = await response.json();
             const reports = result.data;
+            historyCache = reports || [];
+            reportsCurrentPage = 1;
             renderHomeStats(reports);
             renderProjectsTable(reports);
-            updateHistorySidebar(reports); // Sync sidebar
+            updateHistorySidebar(historyCache); // Sync sidebar
         }
     } catch (error) {
         console.error("Error updating home data", error);
@@ -337,25 +363,65 @@ function renderHomeStats(reports) {
 
 function renderProjectsTable(reports) {
     const tbody = document.getElementById('projects-table-body');
+    const metaEl = document.getElementById('reports-table-meta');
+    const paginationInfoEl = document.getElementById('reports-pagination-info');
+    const pageIndicatorEl = document.getElementById('reports-page-indicator');
+    const prevBtn = document.getElementById('reports-prev-btn');
+    const nextBtn = document.getElementById('reports-next-btn');
     if (!tbody) return;
+
     tbody.innerHTML = '';
-    
-    if (reports.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">No projects found. Start a new scan!</td></tr>';
+
+    const normalizedSearch = reportSearchTerm.trim().toLowerCase();
+    const sortedReports = [...reports].sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
+    const filteredReports = normalizedSearch
+        ? sortedReports.filter(report => (report.fileName || '').toLowerCase().includes(normalizedSearch))
+        : sortedReports;
+
+    const totalReports = filteredReports.length;
+    const totalPages = Math.max(1, Math.ceil(totalReports / REPORTS_PER_PAGE));
+    reportsCurrentPage = Math.min(reportsCurrentPage, totalPages);
+
+    const startIndex = (reportsCurrentPage - 1) * REPORTS_PER_PAGE;
+    const endIndex = startIndex + REPORTS_PER_PAGE;
+    const paginatedReports = filteredReports.slice(startIndex, endIndex);
+
+    if (metaEl) {
+        metaEl.textContent = normalizedSearch
+            ? `${totalReports} matching report${totalReports === 1 ? '' : 's'}`
+            : 'Latest uploads linked to your account';
+    }
+
+    if (paginationInfoEl) {
+        if (totalReports === 0) {
+            paginationInfoEl.textContent = 'Showing 0 to 0 of 0 reports';
+        } else {
+            paginationInfoEl.textContent = `Showing ${startIndex + 1} to ${Math.min(endIndex, totalReports)} of ${totalReports} reports`;
+        }
+    }
+
+    if (pageIndicatorEl) {
+        pageIndicatorEl.textContent = `Page ${totalReports === 0 ? 0 : reportsCurrentPage} of ${totalReports === 0 ? 0 : totalPages}`;
+    }
+
+    if (prevBtn) prevBtn.disabled = reportsCurrentPage <= 1 || totalReports === 0;
+    if (nextBtn) nextBtn.disabled = reportsCurrentPage >= totalPages || totalReports === 0;
+
+    if (paginatedReports.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">${normalizedSearch ? 'No reports match your search.' : 'No projects found. Start a new scan!'}</td></tr>`;
         return;
     }
 
-    // Sort by date desc
-    reports.sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
-    
-    reports.forEach(report => {
+    paginatedReports.forEach(report => {
         let vulnCount = 0;
         let criticalCount = 0;
+        let highCount = 0;
         try {
             const data = JSON.parse(report.data);
             const results = data.results || [];
             vulnCount = results.filter(r => r.status === 'Vulnerable').length;
-            criticalCount = results.filter(r => r.status === 'Vulnerable' && (r.result?.severity?.toLowerCase() === 'critical' || r.result?.severity?.toLowerCase() === 'high')).length;
+            criticalCount = results.filter(r => r.status === 'Vulnerable' && r.result?.severity?.toLowerCase() === 'critical').length;
+            highCount = results.filter(r => r.status === 'Vulnerable' && r.result?.severity?.toLowerCase() === 'high').length;
         } catch (e) {}
         
         const tr = document.createElement('tr');
@@ -364,9 +430,10 @@ function renderProjectsTable(reports) {
             <td class="px-6 py-4 font-medium text-white">${escapeHtml(report.fileName)}</td>
             <td class="px-6 py-4 text-slate-400">${new Date(report.uploadDate).toLocaleDateString()}</td>
             <td class="px-6 py-4">
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                     <span class="px-2 py-1 rounded text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/20">${vulnCount} Issues</span>
-                    ${criticalCount > 0 ? `<span class="px-2 py-1 rounded text-xs font-semibold bg-orange-500/20 text-orange-400 border border-orange-500/20">${criticalCount} Critical</span>` : ''}
+                    ${criticalCount > 0 ? `<span class="px-2 py-1 rounded text-xs font-semibold bg-red-500/15 text-red-300 border border-red-500/20">${criticalCount} Critical</span>` : ''}
+                    ${highCount > 0 ? `<span class="px-2 py-1 rounded text-xs font-semibold bg-orange-500/20 text-orange-400 border border-orange-500/20">${highCount} High</span>` : ''}
                 </div>
             </td>
             <td class="px-6 py-4 text-right">
@@ -376,6 +443,19 @@ function renderProjectsTable(reports) {
         `;
         tbody.appendChild(tr);
     });
+}
+
+function handleReportSearch(value) {
+    reportSearchTerm = value || '';
+    reportsCurrentPage = 1;
+    renderProjectsTable(historyCache);
+}
+
+function changeReportsPage(direction) {
+    const nextPage = reportsCurrentPage + direction;
+    if (nextPage < 1) return;
+    reportsCurrentPage = nextPage;
+    renderProjectsTable(historyCache);
 }
 
 function showProfileView() {
@@ -431,24 +511,59 @@ function resetViewer() {
 }
 
 // ========== Report Rendering ==========
+function normalizeReportData(data) {
+    const normalized = data && typeof data === 'object' ? { ...data } : {};
+    normalized.results = Array.isArray(normalized.results) ? normalized.results.map(item => ({
+        ...item,
+        rule: item?.rule || 'unknown_rule',
+        vulnerability: item?.vulnerability || item?.rule || 'Unknown Finding',
+        status: item?.status || 'Unknown',
+        result: {
+            severity: item?.result?.severity || 'Info',
+            confidence: item?.result?.confidence || '',
+            evidence: item?.result?.evidence || '',
+            description: item?.result?.description || '',
+            attack_scenario: item?.result?.attack_scenario || '',
+            attacker_priority: item?.result?.attacker_priority || '',
+            recommendation: item?.result?.recommendation || '',
+            false_positive_analysis: item?.result?.false_positive_analysis || '',
+            masvs_reference: item?.result?.masvs_reference || null,
+            is_vulnerable: item?.result?.is_vulnerable ?? (item?.status === 'Vulnerable')
+        },
+        also_detected_by: Array.isArray(item?.also_detected_by) ? item.also_detected_by : []
+    })) : [];
+
+    normalized.analysis_errors = Array.isArray(normalized.analysis_errors) ? normalized.analysis_errors : [];
+    return normalized;
+}
+
+function getReportStats(data) {
+    const results = data.results || [];
+    return {
+        total: results.length,
+        vulnerable: results.filter(r => r.status === 'Vulnerable').length,
+        notVulnerable: results.filter(r => r.status !== 'Vulnerable').length,
+        critical: results.filter(r => r.status === 'Vulnerable' && r.result?.severity?.toLowerCase() === 'critical').length,
+        high: results.filter(r => r.status === 'Vulnerable' && r.result?.severity?.toLowerCase() === 'high').length,
+        medium: results.filter(r => r.status === 'Vulnerable' && r.result?.severity?.toLowerCase() === 'medium').length,
+        low: results.filter(r => r.status === 'Vulnerable' && r.result?.severity?.toLowerCase() === 'low').length,
+        info: results.filter(r => r.result?.severity?.toLowerCase() === 'info').length
+    };
+}
+
 function renderReport(data) {
-    renderStats(data);
-    renderSummary(data);
-    renderAttackSurface(data);
-    renderFindings(data);
-    renderOverview(data);
+    const normalizedData = normalizeReportData(data);
+    renderStats(normalizedData);
+    renderSummary(normalizedData);
+    renderAttackSurface(normalizedData);
+    renderFindings(normalizedData);
+    renderOverview(normalizedData);
+    renderCompliance(normalizedData);
+    renderEvidence(normalizedData);
 }
 
 function renderStats(data) {
-    const results = data.results || [];
-    const stats = {
-        total: results.length,
-        vulnerable: results.filter(r => r.status === 'Vulnerable').length,
-        critical: results.filter(r => r.result?.severity?.toLowerCase() === 'critical').length,
-        high: results.filter(r => r.result?.severity?.toLowerCase() === 'high').length,
-        medium: results.filter(r => r.result?.severity?.toLowerCase() === 'medium').length,
-        low: results.filter(r => r.result?.severity?.toLowerCase() === 'low').length
-    };
+    const stats = getReportStats(data);
     
     const statsSection = document.getElementById('stats-section');
     statsSection.innerHTML = `
@@ -477,8 +592,8 @@ function renderStats(data) {
             <div class="stat-icon bg-gradient-to-br from-yellow-500 to-orange-500">
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
             </div>
-            <div class="stat-value">${stats.medium + stats.low}</div>
-            <div class="stat-label">Medium & Low</div>
+            <div class="stat-value">${stats.medium + stats.low + stats.info}</div>
+            <div class="stat-label">Medium, Low & Info</div>
         </div>
     `;
 }
@@ -488,9 +603,137 @@ function renderSummary(data) {
     document.getElementById('content-summary').innerHTML = marked.parse(summaryContent);
 }
 
+function formatAttackSurfaceBoolean(value) {
+    return value
+        ? '<span class="inline-flex items-center px-2 py-1 rounded-md bg-green-500/20 text-green-300 border border-green-500/30 text-xs font-semibold">Enabled</span>'
+        : '<span class="inline-flex items-center px-2 py-1 rounded-md bg-slate-700/70 text-slate-300 border border-slate-600/50 text-xs font-semibold">Not Detected</span>';
+}
+
 function renderAttackSurface(data) {
-    const attackSurfaceContent = data.attack_surface_map || "_No attack surface map provided._";
-    document.getElementById('content-attack-surface').innerHTML = marked.parse(attackSurfaceContent);
+    const container = document.getElementById('content-attack-surface');
+    const attackSurfaceContent = data.attack_surface_map;
+
+    if (!attackSurfaceContent) {
+        container.innerHTML = marked.parse('_No attack surface map provided._');
+        return;
+    }
+
+    if (typeof attackSurfaceContent === 'string') {
+        container.innerHTML = marked.parse(attackSurfaceContent);
+        return;
+    }
+
+    const exportedActivities = attackSurfaceContent.exported_activities || [];
+    const exportedReceivers = attackSurfaceContent.exported_receivers || [];
+    const exportedServices = attackSurfaceContent.exported_services || [];
+    const exportedProviders = attackSurfaceContent.exported_providers || [];
+    const deepLinks = attackSurfaceContent.deep_links || [];
+    const unprotectedBroadcasts = attackSurfaceContent.unprotected_broadcasts || [];
+    const network = attackSurfaceContent.network || [];
+    const manifestFlags = attackSurfaceContent.manifest_flags || {};
+
+    const renderList = (title, items, emptyText = 'None detected') => `
+        <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+            <h3 class="text-sm font-semibold text-white mb-3">${title}</h3>
+            ${items.length ? `
+                <div class="flex flex-wrap gap-2">
+                    ${items.map(item => `<span class="px-3 py-1 rounded-lg bg-dark-800 border border-dark-600 text-slate-200 text-sm">${escapeHtml(item)}</span>`).join('')}
+                </div>
+            ` : `<p class="text-sm text-slate-500">${escapeHtml(emptyText)}</p>`}
+        </div>
+    `;
+
+    const renderKeyValues = Object.keys(manifestFlags).length ? `
+        <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+            <h3 class="text-sm font-semibold text-white mb-3">Manifest Flags</h3>
+            <div class="grid sm:grid-cols-2 gap-3">
+                ${Object.entries(manifestFlags).map(([key, value]) => `
+                    <div class="flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
+                        <span class="text-sm text-slate-300">${escapeHtml(key.replace(/_/g, ' '))}</span>
+                        ${formatAttackSurfaceBoolean(Boolean(value))}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
+
+    const renderDeepLinks = `
+        <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+            <h3 class="text-sm font-semibold text-white mb-3">Deep Links</h3>
+            ${deepLinks.length ? `
+                <div class="space-y-3">
+                    ${deepLinks.map(link => `
+                        <div class="rounded-lg bg-dark-800/80 border border-dark-700 p-3">
+                            <div class="text-sm text-white font-medium">${escapeHtml(link.scheme || 'unknown')}://${escapeHtml(link.host || '')}</div>
+                            <div class="text-xs text-slate-400 mt-1">Handler: ${escapeHtml(link.handler || 'Unknown')}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : `<p class="text-sm text-slate-500">No deep links detected</p>`}
+        </div>
+    `;
+
+    container.className = 'max-w-none';
+    container.innerHTML = `
+        <div class="space-y-6">
+            <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+                    <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Exported Activities</p>
+                    <p class="text-3xl font-bold text-white">${exportedActivities.length}</p>
+                </div>
+                <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+                    <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Receivers</p>
+                    <p class="text-3xl font-bold text-white">${exportedReceivers.length}</p>
+                </div>
+                <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+                    <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Services / Providers</p>
+                    <p class="text-3xl font-bold text-white">${exportedServices.length + exportedProviders.length}</p>
+                </div>
+                <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+                    <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Deep Links</p>
+                    <p class="text-3xl font-bold text-white">${deepLinks.length}</p>
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-4">
+                ${renderList('Exported Activities', exportedActivities)}
+                ${renderList('Exported Receivers', exportedReceivers)}
+                ${renderList('Exported Services', exportedServices)}
+                ${renderList('Exported Providers', exportedProviders)}
+            </div>
+
+            ${renderDeepLinks}
+
+            <div class="grid lg:grid-cols-2 gap-4">
+                ${renderList('Unprotected Broadcasts', unprotectedBroadcasts)}
+                ${renderList('Network Exposure', network)}
+            </div>
+
+            <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+                <h3 class="text-sm font-semibold text-white mb-3">Capability Flags</h3>
+                <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                    <div class="flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
+                        <span class="text-sm text-slate-300">File I/O</span>
+                        ${formatAttackSurfaceBoolean(Boolean(attackSurfaceContent.file_io))}
+                    </div>
+                    <div class="flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
+                        <span class="text-sm text-slate-300">IPC</span>
+                        ${formatAttackSurfaceBoolean(Boolean(attackSurfaceContent.ipc))}
+                    </div>
+                    <div class="flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
+                        <span class="text-sm text-slate-300">Deserialization</span>
+                        ${formatAttackSurfaceBoolean(Boolean(attackSurfaceContent.deserialization))}
+                    </div>
+                    <div class="flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
+                        <span class="text-sm text-slate-300">Reflection</span>
+                        ${formatAttackSurfaceBoolean(Boolean(attackSurfaceContent.reflection))}
+                    </div>
+                </div>
+            </div>
+
+            ${renderKeyValues}
+        </div>
+    `;
 }
 
 function renderFindings(data) {
@@ -518,7 +761,7 @@ function renderFindings(data) {
 }
 
 function createFindingCard(item, index) {
-    const r = item.result;
+    const r = item.result || {};
     const severity = (r.severity || 'info').toLowerCase();
     const severityClass = `severity-${severity}`;
     const statusClass = item.status === 'Vulnerable' ? 'status-vulnerable' : 'status-not-vulnerable';
@@ -533,9 +776,11 @@ function createFindingCard(item, index) {
         <div class="card-header flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div class="flex-grow">
                 <div class="flex items-center gap-3 mb-2 flex-wrap">
-                    <span class="severity-badge ${severityClass}">${r.severity || 'Info'}</span>
-                    <span class="status-badge ${statusClass}">${item.status}</span>
-                    ${r.confidence ? `<span class="text-xs text-slate-400 font-mono">Confidence: ${r.confidence}</span>` : ''}
+                    <span class="severity-badge ${severityClass}">${escapeHtml(r.severity || 'Info')}</span>
+                    <span class="status-badge ${statusClass}">${escapeHtml(item.status)}</span>
+                    ${item.rule ? `<span class="text-xs text-cyan-300/90 font-mono px-2 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/20">Rule: ${escapeHtml(item.rule)}</span>` : ''}
+                    ${r.attacker_priority ? `<span class="text-xs text-amber-300 font-mono px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">Attacker Priority: ${escapeHtml(r.attacker_priority)}</span>` : ''}
+                    ${r.confidence ? `<span class="text-xs text-slate-400 font-mono">Confidence: ${escapeHtml(r.confidence)}</span>` : ''}
                 </div>
                 <h3 class="text-xl font-bold text-white mb-2">${escapeHtml(item.vulnerability)}</h3>
                 <p class="text-sm text-slate-400 font-mono break-all">${escapeHtml(item.file)}</p>
@@ -581,6 +826,23 @@ function createFindingCard(item, index) {
                     <pre class="bg-dark-900/80 border border-dark-700 rounded-lg p-4 overflow-x-auto custom-scrollbar"><code class="text-xs text-cyan-300">${escapeHtml(r.evidence)}</code></pre>
                 </div>
             ` : ''}
+            ${item.also_detected_by && item.also_detected_by.length ? `
+                <div class="pt-4 border-t border-dark-700">
+                    <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Also Detected By</h4>
+                    <div class="space-y-3">
+                        ${item.also_detected_by.map(detector => `
+                            <div class="bg-dark-900/50 border border-dark-700 rounded-lg p-4">
+                                <div class="flex flex-wrap items-center gap-2 mb-2">
+                                    <span class="text-xs text-cyan-300 font-mono px-2 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/20">${escapeHtml(detector.rule || 'unknown_rule')}</span>
+                                    ${detector.severity ? `<span class="severity-badge severity-${escapeHtml(String(detector.severity).toLowerCase())}">${escapeHtml(detector.severity)}</span>` : ''}
+                                </div>
+                                <p class="text-sm font-semibold text-white mb-1">${escapeHtml(detector.vulnerability || 'Additional Detection')}</p>
+                                <p class="text-sm text-slate-400">${escapeHtml(detector.description || 'No description provided.')}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            ` : ''}
             ${r.false_positive_analysis ? `
                 <div class="pt-4 border-t border-dark-700">
                     <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">False Positive Analysis</h4>
@@ -593,16 +855,79 @@ function createFindingCard(item, index) {
     return card;
 }
 
+function renderCompliance(data) {
+    const container = document.getElementById('content-compliance');
+    if (!container) return;
+
+    const results = data.results || [];
+    const vulnerableResults = results.filter(item => item.status === 'Vulnerable');
+    const mappedReferences = vulnerableResults
+        .map(item => item.result?.masvs_reference)
+        .filter(ref => ref && (ref.id || ref.link));
+
+    if (!mappedReferences.length) {
+        container.innerHTML = `
+            <div class="workspace-panel-subtle p-6 text-sm text-slate-400">
+                No MASVS compliance mapping available for this report.
+            </div>
+        `;
+        return;
+    }
+
+    const uniqueReferences = Array.from(
+        new Map(mappedReferences.map(ref => [ref.id || ref.link, ref])).values()
+    );
+
+    container.innerHTML = `
+        <div class="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+            ${uniqueReferences.map(ref => `
+                <a href="${ref.link || '#'}" target="_blank" rel="noopener noreferrer"
+                   class="workspace-panel-subtle p-5 hover:border-cyan-500/40 transition-colors block">
+                    <div class="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">MASVS Control</div>
+                    <div class="text-lg font-semibold text-white">${escapeHtml(ref.id || 'Unknown Reference')}</div>
+                    <div class="text-sm text-cyan-300 mt-2">Open reference</div>
+                </a>
+            `).join('')}
+        </div>
+    `;
+}
+
+function renderEvidence(data) {
+    const container = document.getElementById('content-evidence');
+    if (!container) return;
+
+    const evidenceItems = (data.results || []).filter(item => item.result?.evidence);
+
+    if (!evidenceItems.length) {
+        container.innerHTML = `
+            <div class="workspace-panel-subtle p-6 text-sm text-slate-400">
+                No evidence snippets available in this report.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="space-y-4">
+            ${evidenceItems.map(item => `
+                <div class="workspace-panel-subtle p-5">
+                    <div class="flex flex-wrap items-center gap-3 mb-3">
+                        <span class="severity-badge severity-${escapeHtml(String(item.result?.severity || 'info').toLowerCase())}">
+                            ${escapeHtml(item.result?.severity || 'Info')}
+                        </span>
+                        <span class="text-sm font-semibold text-white">${escapeHtml(item.vulnerability || item.rule || 'Finding')}</span>
+                    </div>
+                    <p class="text-xs text-slate-500 font-mono mb-3 break-all">${escapeHtml(item.file || '')}</p>
+                    <pre class="bg-dark-900/80 border border-dark-700 rounded-lg p-4 overflow-x-auto custom-scrollbar"><code class="text-xs text-cyan-300">${escapeHtml(item.result.evidence)}</code></pre>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
 function renderOverview(data) {
     const results = data.results || [];
-    const stats = {
-        total: results.length,
-        vulnerable: results.filter(r => r.status === 'Vulnerable').length,
-        critical: results.filter(r => r.result?.severity?.toLowerCase() === 'critical').length,
-        high: results.filter(r => r.result?.severity?.toLowerCase() === 'high').length,
-        medium: results.filter(r => r.result?.severity?.toLowerCase() === 'medium').length,
-        low: results.filter(r => r.result?.severity?.toLowerCase() === 'low').length
-    };
+    const stats = getReportStats(data);
     
     if (severityChart) severityChart.destroy();
     if (statusChart) statusChart.destroy();
@@ -612,20 +937,22 @@ function renderOverview(data) {
         severityChart = new Chart(severityCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Critical', 'High', 'Medium', 'Low'],
+                labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
                 datasets: [{
-                    data: [stats.critical, stats.high, stats.medium, stats.low],
+                    data: [stats.critical, stats.high, stats.medium, stats.low, stats.info],
                     backgroundColor: [
                         'rgba(220, 38, 38, 0.8)',
                         'rgba(239, 68, 68, 0.8)',
                         'rgba(249, 115, 22, 0.8)',
-                        'rgba(59, 130, 246, 0.8)'
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(148, 163, 184, 0.8)'
                     ],
                     borderColor: [
                         'rgba(220, 38, 38, 1)',
                         'rgba(239, 68, 68, 1)',
                         'rgba(249, 115, 22, 1)',
-                        'rgba(59, 130, 246, 1)'
+                        'rgba(59, 130, 246, 1)',
+                        'rgba(148, 163, 184, 1)'
                     ],
                     borderWidth: 2
                 }]
@@ -663,8 +990,8 @@ function renderOverview(data) {
     
     const statusCtx = document.getElementById('status-chart');
     if (statusCtx) {
-        const vulnerable = results.filter(r => r.status === 'Vulnerable').length;
-        const notVulnerable = results.length - vulnerable;
+        const vulnerable = stats.vulnerable;
+        const notVulnerable = stats.notVulnerable;
         
         statusChart = new Chart(statusCtx, {
             type: 'pie',
@@ -750,7 +1077,7 @@ function renderOverview(data) {
 
 // ========== Tab Navigation ==========
 function switchTab(tabName) {
-    ['overview', 'summary', 'attack-surface', 'findings'].forEach(tab => {
+    ['overview', 'summary', 'attack-surface', 'findings', 'compliance', 'evidence'].forEach(tab => {
         const tabEl = document.getElementById(`tab-${tab}`);
         const btnEl = document.getElementById(`btn-${tab}`);
         
@@ -807,7 +1134,7 @@ function toggleHistory() {
     if(sidebar) {
         sidebar.classList.toggle('hidden');
         if (!sidebar.classList.contains('hidden')) {
-            updateHistorySidebar();
+            updateHistorySidebar(historyCache);
         }
     }
 }
@@ -815,15 +1142,10 @@ function toggleHistory() {
 
 // ========== Utility Functions ==========
 function escapeHtml(text) {
-    if (!text) return '';
-    const map = {
-        '&': '&',
-        '<': '<',
-        '>': '>',
-        '"': '"',
-        "'": '&#039;'
-    };
-    return String(text).replace(/[&<>"']/g, m => map[m]);
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
 }
 
 function getTimeAgo(date) {
