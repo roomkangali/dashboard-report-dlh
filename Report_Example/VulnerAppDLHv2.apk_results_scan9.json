@@ -1,0 +1,80 @@
+{
+  "app_summary": "This app is a training ground for demonstrating common Android vulnerabilities.\n\n*   Manifest is set to `debuggable=true` and `allowBackup=true`.\n*   No dangerous permissions requested.\n*   The app presents a large attack surface with 16 exported activities and 2 exported receivers.\n*   `UnprotectedExportedActivity` and `WebViewActivity` are exposed via deep links `vulnerapp://*` and `dlh://webview` respectively.\n*   `HijackTargetActivity` specifies a foreign `taskAffinity`, making it susceptible to task hijacking attacks (StrandHogg).\n*   `IntentRedirectionActivity` is exported and performs insecure intent forwarding.\n*   The exported `SpoofableReceiver` listens for an unprotected `ACTION_RESET_PASSWORD` broadcast, which can be triggered by any app.\n*   Code and component names indicate the app handles test secrets, credentials, and local database content as part of its challenges.",
+  "attack_surface_map": {
+    "exported_activities": [
+      "MainActivity",
+      "SecretsActivity",
+      "WebViewActivity",
+      "SQLInjectionActivity",
+      "InsecureFileActivity",
+      "CryptoActivity",
+      "GraphQLInjectionActivity",
+      "UnprotectedExportedActivity",
+      "DeserializationActivity",
+      "ReflectionActivity",
+      "PendingIntentActivity",
+      "ZipSlipActivity",
+      "IntentRedirectionActivity",
+      "FragmentInjectionActivity",
+      "HijackTargetActivity"
+    ],
+    "exported_receivers": [
+      "SpoofableReceiver",
+      "ProfileInstallReceiver"
+    ],
+    "exported_services": [],
+    "exported_providers": [],
+    "deep_links": [
+      {
+        "scheme": "dlh",
+        "host": "webview",
+        "handler": "WebViewActivity"
+      },
+      {
+        "scheme": "vulnerapp",
+        "host": "*",
+        "handler": "UnprotectedExportedActivity"
+      }
+    ],
+    "unprotected_broadcasts": [
+      "com.dlh.vulnerapp.ACTION_RESET_PASSWORD"
+    ],
+    "network": [
+      "webview",
+      "graphql"
+    ],
+    "file_io": true,
+    "ipc": true,
+    "deserialization": false,
+    "reflection": true,
+    "manifest_flags": {
+      "allow_backup": true,
+      "debuggable": true
+    }
+  },
+  "results": [
+    {
+      "file": "output/VulnerAppDLHv2.apk_decompiled/sources/com/dlh/vulnerapp/IntentRedirectionActivity.java",
+      "rule": "intent_redirection",
+      "vulnerability": "Intent Redirection",
+      "status": "Vulnerable",
+      "result": {
+        "is_vulnerable": true,
+        "severity": "High",
+        "confidence": "High",
+        "evidence": "Intent forward = (Intent) getIntent().getParcelableExtra(\"forward_intent\");\nif (forward != null) {\n    startActivity(forward);\n}",
+        "description": "The `IntentRedirectionActivity` component is exported and vulnerable to Intent Redirection. It extracts a nested `Intent` object from the 'forward_intent' extra of the incoming Intent and launches it using `startActivity()` without any validation. This allows a malicious app to use this activity as a proxy to launch any non-exported component within the vulnerable application's context, bypassing Android's access controls.",
+        "attack_scenario": "An attacker's malicious application crafts an Intent targeting a private, non-exported activity within the `com.dlh.vulnerapp` package. The attacker wraps this Intent as a `Parcelable` extra with the key 'forward_intent' inside a carrier Intent. The carrier Intent is then sent to the exported `com.dlh.vulnerapp.IntentRedirectionActivity`. The vulnerable activity extracts the nested Intent and executes it with its own privileges, giving the attacker access to the protected component.",
+        "attacker_priority": "HIGH",
+        "recommendation": "Do not forward Intents from untrusted sources without validation. Before calling `startActivity(forward)`, validate the target component of the `forward` Intent. One solution is to use `forward.resolveActivity(getPackageManager())` and check if the resolved component's package name matches the application's own package name. Alternatively, if the target is known, explicitly set the component using `forward.setComponent()` to a hardcoded, trusted `ComponentName`.",
+        "false_positive_analysis": "A false positive is highly unlikely. The code exhibits a clear and complete vulnerability pattern for Intent Redirection, and the provided manifest context confirms the component is exported, making it directly exploitable by a third-party application. The impact could be considered lower only if the application contains no sensitive, non-exported components, but the vulnerability pattern itself remains valid.",
+        "masvs_reference": {
+          "id": "MASVS-PLATFORM-1",
+          "description": "The app uses IPC mechanisms securely. Do not forward Intents received from untrusted callers without validating the target; a mutable/nested Intent enables confused-deputy attacks against non-exported components.",
+          "link": "https://mas.owasp.org/MASVS/controls/MASVS-PLATFORM-1/"
+        }
+      }
+    }
+  ],
+  "analysis_errors": []
+}
