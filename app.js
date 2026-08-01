@@ -605,8 +605,8 @@ function renderSummary(data) {
 
 function formatAttackSurfaceBoolean(value) {
     return value
-        ? '<span class="inline-flex items-center px-2 py-1 rounded-md bg-green-500/20 text-green-300 border border-green-500/30 text-xs font-semibold">Enabled</span>'
-        : '<span class="inline-flex items-center px-2 py-1 rounded-md bg-slate-700/70 text-slate-300 border border-slate-600/50 text-xs font-semibold">Not Detected</span>';
+        ? '<span class="attack-surface-status is-enabled inline-flex items-center px-2 py-1 rounded-md bg-green-500/20 text-green-300 border border-green-500/30 text-xs font-semibold">Enabled</span>'
+        : '<span class="attack-surface-status is-disabled inline-flex items-center px-2 py-1 rounded-md bg-slate-700/70 text-slate-300 border border-slate-600/50 text-xs font-semibold">Not Detected</span>';
 }
 
 function renderAttackSurface(data) {
@@ -633,22 +633,22 @@ function renderAttackSurface(data) {
     const manifestFlags = attackSurfaceContent.manifest_flags || {};
 
     const renderList = (title, items, emptyText = 'None detected') => `
-        <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+        <div class="attack-surface-section bg-dark-900/40 border border-dark-700 rounded-xl p-4">
             <h3 class="text-sm font-semibold text-white mb-3">${title}</h3>
             ${items.length ? `
                 <div class="flex flex-wrap gap-2">
-                    ${items.map(item => `<span class="px-3 py-1 rounded-lg bg-dark-800 border border-dark-600 text-slate-200 text-sm">${escapeHtml(item)}</span>`).join('')}
+                    ${items.map(item => `<span class="attack-surface-chip px-3 py-1 rounded-lg bg-dark-800 border border-dark-600 text-slate-200 text-sm">${escapeHtml(item)}</span>`).join('')}
                 </div>
             ` : `<p class="text-sm text-slate-500">${escapeHtml(emptyText)}</p>`}
         </div>
     `;
 
     const renderKeyValues = Object.keys(manifestFlags).length ? `
-        <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+        <div class="attack-surface-section bg-dark-900/40 border border-dark-700 rounded-xl p-4">
             <h3 class="text-sm font-semibold text-white mb-3">Manifest Flags</h3>
             <div class="grid sm:grid-cols-2 gap-3">
                 ${Object.entries(manifestFlags).map(([key, value]) => `
-                    <div class="flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
+                    <div class="attack-surface-row flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
                         <span class="text-sm text-slate-300">${escapeHtml(key.replace(/_/g, ' '))}</span>
                         ${formatAttackSurfaceBoolean(Boolean(value))}
                     </div>
@@ -658,12 +658,12 @@ function renderAttackSurface(data) {
     ` : '';
 
     const renderDeepLinks = `
-        <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+        <div class="attack-surface-section bg-dark-900/40 border border-dark-700 rounded-xl p-4">
             <h3 class="text-sm font-semibold text-white mb-3">Deep Links</h3>
             ${deepLinks.length ? `
                 <div class="space-y-3">
                     ${deepLinks.map(link => `
-                        <div class="rounded-lg bg-dark-800/80 border border-dark-700 p-3">
+                        <div class="attack-surface-row rounded-lg bg-dark-800/80 border border-dark-700 p-3">
                             <div class="text-sm text-white font-medium">${escapeHtml(link.scheme || 'unknown')}://${escapeHtml(link.host || '')}</div>
                             <div class="text-xs text-slate-400 mt-1">Handler: ${escapeHtml(link.handler || 'Unknown')}</div>
                         </div>
@@ -676,20 +676,20 @@ function renderAttackSurface(data) {
     container.className = 'max-w-none';
     container.innerHTML = `
         <div class="space-y-6">
-            <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-4">
-                <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+            <div class="attack-surface-metrics grid md:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div class="attack-surface-metric bg-dark-900/40 border border-dark-700 rounded-xl p-4">
                     <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Exported Activities</p>
                     <p class="text-3xl font-bold text-white">${exportedActivities.length}</p>
                 </div>
-                <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+                <div class="attack-surface-metric bg-dark-900/40 border border-dark-700 rounded-xl p-4">
                     <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Receivers</p>
                     <p class="text-3xl font-bold text-white">${exportedReceivers.length}</p>
                 </div>
-                <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+                <div class="attack-surface-metric bg-dark-900/40 border border-dark-700 rounded-xl p-4">
                     <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Services / Providers</p>
                     <p class="text-3xl font-bold text-white">${exportedServices.length + exportedProviders.length}</p>
                 </div>
-                <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+                <div class="attack-surface-metric bg-dark-900/40 border border-dark-700 rounded-xl p-4">
                     <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Deep Links</p>
                     <p class="text-3xl font-bold text-white">${deepLinks.length}</p>
                 </div>
@@ -709,22 +709,22 @@ function renderAttackSurface(data) {
                 ${renderList('Network Exposure', network)}
             </div>
 
-            <div class="bg-dark-900/40 border border-dark-700 rounded-xl p-4">
+            <div class="attack-surface-section capability-flags bg-dark-900/40 border border-dark-700 rounded-xl p-4">
                 <h3 class="text-sm font-semibold text-white mb-3">Capability Flags</h3>
-                <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
-                    <div class="flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
+                <div class="capability-flags-grid grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                    <div class="attack-surface-row capability-flag flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
                         <span class="text-sm text-slate-300">File I/O</span>
                         ${formatAttackSurfaceBoolean(Boolean(attackSurfaceContent.file_io))}
                     </div>
-                    <div class="flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
+                    <div class="attack-surface-row capability-flag flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
                         <span class="text-sm text-slate-300">IPC</span>
                         ${formatAttackSurfaceBoolean(Boolean(attackSurfaceContent.ipc))}
                     </div>
-                    <div class="flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
+                    <div class="attack-surface-row capability-flag flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
                         <span class="text-sm text-slate-300">Deserialization</span>
                         ${formatAttackSurfaceBoolean(Boolean(attackSurfaceContent.deserialization))}
                     </div>
-                    <div class="flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
+                    <div class="attack-surface-row capability-flag flex items-center justify-between gap-3 rounded-lg bg-dark-800/80 border border-dark-700 px-3 py-2">
                         <span class="text-sm text-slate-300">Reflection</span>
                         ${formatAttackSurfaceBoolean(Boolean(attackSurfaceContent.reflection))}
                     </div>
@@ -775,12 +775,12 @@ function createFindingCard(item, index) {
     card.innerHTML = `
         <div class="card-header flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div class="flex-grow">
-                <div class="flex items-center gap-3 mb-2 flex-wrap">
-                    <span class="severity-badge ${severityClass}">${escapeHtml(r.severity || 'Info')}</span>
-                    <span class="status-badge ${statusClass}">${escapeHtml(item.status)}</span>
-                    ${item.rule ? `<span class="text-xs text-cyan-300/90 font-mono px-2 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/20">Rule: ${escapeHtml(item.rule)}</span>` : ''}
-                    ${r.attacker_priority ? `<span class="text-xs text-amber-300 font-mono px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">Attacker Priority: ${escapeHtml(r.attacker_priority)}</span>` : ''}
-                    ${r.confidence ? `<span class="text-xs text-slate-400 font-mono">Confidence: ${escapeHtml(r.confidence)}</span>` : ''}
+                <div class="finding-meta flex items-center gap-2 mb-3 flex-wrap">
+                    <span class="finding-meta-chip finding-meta-severity ${severityClass}">${escapeHtml(r.severity || 'Info')}</span>
+                    <span class="finding-meta-chip finding-meta-status ${statusClass}">${escapeHtml(item.status)}</span>
+                    ${item.rule ? `<span class="finding-meta-chip finding-meta-rule"><span class="finding-meta-label">Rule</span>${escapeHtml(item.rule)}</span>` : ''}
+                    ${r.attacker_priority ? `<span class="finding-meta-chip finding-meta-priority"><span class="finding-meta-label">Priority</span>${escapeHtml(r.attacker_priority)}</span>` : ''}
+                    ${r.confidence ? `<span class="finding-meta-chip finding-meta-confidence"><span class="finding-meta-label">Confidence</span>${escapeHtml(r.confidence)}</span>` : ''}
                 </div>
                 <h3 class="text-xl font-bold text-white mb-2">${escapeHtml(item.vulnerability)}</h3>
                 <p class="text-sm text-slate-400 font-mono break-all">${escapeHtml(item.file)}</p>
@@ -801,7 +801,7 @@ function createFindingCard(item, index) {
             ${r.attack_scenario || r.recommendation ? `
                 <div class="grid md:grid-cols-2 gap-4">
                     ${r.attack_scenario ? `
-                        <div class="bg-dark-900/50 border border-red-900/30 rounded-lg p-4">
+                        <div class="finding-detail finding-attack bg-dark-900/50 border border-red-900/30 rounded-lg p-4">
                             <h4 class="text-xs font-semibold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                                 Attack Scenario
@@ -810,7 +810,7 @@ function createFindingCard(item, index) {
                         </div>
                     ` : ''}
                     ${r.recommendation ? `
-                        <div class="bg-dark-900/50 border border-green-900/30 rounded-lg p-4">
+                        <div class="finding-detail finding-recommendation bg-dark-900/50 border border-green-900/30 rounded-lg p-4">
                             <h4 class="text-xs font-semibold text-green-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                                 Recommendation
@@ -827,17 +827,23 @@ function createFindingCard(item, index) {
                 </div>
             ` : ''}
             ${item.also_detected_by && item.also_detected_by.length ? `
-                <div class="pt-4 border-t border-dark-700">
+                <div class="also-detected-section pt-4 border-t border-dark-700">
                     <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Also Detected By</h4>
                     <div class="space-y-3">
                         ${item.also_detected_by.map(detector => `
-                            <div class="bg-dark-900/50 border border-dark-700 rounded-lg p-4">
-                                <div class="flex flex-wrap items-center gap-2 mb-2">
-                                    <span class="text-xs text-cyan-300 font-mono px-2 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/20">${escapeHtml(detector.rule || 'unknown_rule')}</span>
-                                    ${detector.severity ? `<span class="severity-badge severity-${escapeHtml(String(detector.severity).toLowerCase())}">${escapeHtml(detector.severity)}</span>` : ''}
+                            <div class="also-detected-item bg-dark-900/50 border border-dark-700 rounded-lg p-4">
+                                <div class="finding-meta also-detected-meta flex flex-wrap items-center gap-2 mb-3">
+                                    <span class="finding-meta-chip finding-meta-rule">
+                                        <span class="finding-meta-label">Rule</span>${escapeHtml(detector.rule || 'unknown_rule')}
+                                    </span>
+                                    ${detector.severity ? `
+                                        <span class="finding-meta-chip finding-meta-severity severity-${escapeHtml(String(detector.severity).toLowerCase())}">
+                                            <span class="finding-meta-label">Severity</span>${escapeHtml(detector.severity)}
+                                        </span>
+                                    ` : ''}
                                 </div>
-                                <p class="text-sm font-semibold text-white mb-1">${escapeHtml(detector.vulnerability || 'Additional Detection')}</p>
-                                <p class="text-sm text-slate-400">${escapeHtml(detector.description || 'No description provided.')}</p>
+                                <p class="also-detected-title text-sm font-semibold text-white mb-1">${escapeHtml(detector.vulnerability || 'Additional Detection')}</p>
+                                <p class="also-detected-description text-sm text-slate-400">${escapeHtml(detector.description || 'No description provided.')}</p>
                             </div>
                         `).join('')}
                     </div>
@@ -964,7 +970,7 @@ function renderOverview(data) {
                     legend: {
                         position: 'bottom',
                         labels: {
-                            color: '#cbd5e1',
+                            color: '#333333',
                             padding: 15,
                             font: {
                                 size: 12,
@@ -975,7 +981,7 @@ function renderOverview(data) {
                     title: {
                         display: true,
                         text: 'Severity Distribution',
-                        color: '#f8fafc',
+                        color: '#222222',
                         font: {
                             size: 16,
                             weight: 'bold',
@@ -1017,7 +1023,7 @@ function renderOverview(data) {
                     legend: {
                         position: 'bottom',
                         labels: {
-                            color: '#cbd5e1',
+                            color: '#333333',
                             padding: 15,
                             font: {
                                 size: 12,
@@ -1028,7 +1034,7 @@ function renderOverview(data) {
                     title: {
                         display: true,
                         text: 'Vulnerability Status',
-                        color: '#f8fafc',
+                        color: '#222222',
                         font: {
                             size: 16,
                             weight: 'bold',
